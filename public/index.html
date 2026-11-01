@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TPM · Local folder inspector</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">TPM SETUP OPTIMISER / PROOF OF CONCEPT</p>
+      <h1>Your files. Your browser.</h1>
+      <p>Choose or drop your game folder, find a data mod, and inspect its file metadata locally.</p>
+      <p class="privacy">Read-only access · No uploads · No saved selections</p>
+    </header>
+    <section class="panel" aria-labelledby="selection-title">
+      <h2 id="selection-title">Select a data mod</h2>
+      <div class="folder-row">
+        <button id="choose-root" type="button" disabled>Choose game folder</button>
+        <span id="root-name">No game folder selected</span>
+      </div>
+      <p class="hint">Folder pickers may refuse protected installation folders, including Program Files.
+        This POC respects those access restrictions.</p>
+      <div class="drop-targets">
+        <div id="drop-root" class="drop-zone" role="group" aria-label="Drop game folder" aria-disabled="true">
+          <strong>Drop game folder here</strong>
+          <span>For folder paths and Workshop title search.</span>
+        </div>
+        <div id="drop-mod" class="drop-zone" role="group" aria-label="Drop mod folder" aria-disabled="true">
+          <strong>Drop mod folder here</strong>
+          <span>Inspect one mod directly, including an external mod.</span>
+        </div>
+      </div>
+      <label for="mod-query">Mod folder, relative path or friendly title</label>
+      <input id="mod-query" maxlength="256" placeholder="Real Names 2026" disabled aria-describedby="query-help">
+      <p id="query-help" class="hint">For example: f1_2026-pfm, data/my-mod, or Real Names 2026.</p>
+      <div class="actions">
+        <button id="inspect" type="button" disabled>Inspect</button>
+        <button id="choose-mod" type="button" class="secondary" disabled>Choose mod folder</button>
+        <button id="cancel" type="button" class="secondary" disabled>Cancel</button>
+        <button id="clear" type="button" class="secondary" disabled>Clear</button>
+      </div>
+      <p class="hint">Choose mod folder grants separate access to a mod outside the game folder.</p>
+      <p id="browser-note" class="notice" hidden></p>
+      <p id="status" role="status" aria-live="polite">Preparing browser worker…</p>
+      <p id="catalogue-note" class="hint"></p>
+      <div id="matches" aria-label="Matching mods"></div>
+    </section>
+    <section id="results" class="panel" aria-labelledby="results-title" hidden>
+      <h2 id="results-title">Inspection results</h2>
+      <p id="mod-location" class="path"></p>
+      <dl class="summary">
+        <div><dt>Files inspected</dt><dd id="file-count"></dd></div>
+        <div><dt>Total size</dt><dd id="total-size"></dd></div>
+        <div><dt>Processed by</dt><dd>Browser worker</dd></div>
+      </dl>
+      <p id="extensions" class="hint"></p>
+      <p id="limits" class="notice" hidden></p>
+      <div class="table-wrap">
+        <table>
+          <caption>File metadata — up to 100 rows, sorted by relative path</caption>
+          <thead><tr><th scope="col">File</th><th scope="col">Type</th><th scope="col">Size</th><th scope="col">Last modified</th></tr></thead>
+          <tbody id="files"></tbody>
+        </table>
+      </div>
+    </section>
+    <footer>Only workshop.json contents are read to discover mod titles. Other files are inspected by
+      name, size and modification time. File contents are never executed.</footer>
+    <noscript>This POC needs JavaScript to inspect files in your browser.</noscript>
+  </main>
+</body>
+</html>
