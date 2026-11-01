@@ -173,7 +173,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
   };
   ui["prepare-inputs"].onclick = () => job(async signal => {
     preparationSignal = signal;
-    ui.status.textContent = "Reading and validating calculation inputs in the browser worker…";
+    ui.status.textContent = "Building reference setups and grading the entered setup locally…";
     const files = {};
     for (const name of DEFINITION_FILES) {
       try { files[name] = await mod.file(name); }
@@ -182,7 +182,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     }
     const numeric = id => ui[id].value.trim() ? Number(ui[id].value) : NaN;
     const seed = ui["session-seed"].value.trim() ? numeric("session-seed") : Math.floor(Math.random() * 1000000);
-    const result = await request("predict-laps", { saveFile: save, trackFile: tracks.get(ui["track-choice"].value), files, seed, testing: calendarDefault?.testing === true,
+    const result = await request("grade-setups", { saveFile: save, trackFile: tracks.get(ui["track-choice"].value), files, seed, testing: calendarDefault?.testing === true,
       trackId: calendarDefault?.file === ui["track-choice"].value ? calendarDefault.track_id : undefined,
       weather: { temperature_c: numeric("ambient"), wetness_mm: numeric("water") }, compounds: ui["input-compounds"].value,
       settings: { front_wing: numeric("setup-front"), rear_wing: numeric("setup-rear"), front_pressure_psi: numeric("setup-front-pressure"),
@@ -196,27 +196,41 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       `Compounds: ${input.tyres.map(tyre => tyre.name.toUpperCase()).join(" / ")}. Saved rules: ${input.activePolicies.car.name}; ${input.activePolicies.tyres.name}.`,
       `Fixed setup: wings ${input.settings.front_wing}/${input.settings.rear_wing}; suspension ${input.settings.suspension_level}; pressures ${input.settings.front_pressure_psi}/${input.settings.rear_pressure_psi} psi.`,
       `Loaded ${result.fileNames.length} files and ${result.constantsCount} literal constants. Selected mod definitions must match this save's career.`,
-      `Session seed: ${result.prediction.seed}; initial wind ${result.prediction.wind.speed_kmh.toFixed(1)} km/h, ${result.prediction.wind.direction_deg.toFixed(1)}°; worker time ${result.prediction.timing_ms.end_to_end.toFixed(0)} ms.`,
+      `Session seed: ${result.prediction.seed}; initial wind ${result.prediction.wind.speed_kmh.toFixed(1)} km/h, ${result.prediction.wind.direction_deg.toFixed(1)}°; worker time ${result.grading.timing_ms.end_to_end.toFixed(0)} ms (${result.grading.reference_laps_evaluated} reference laps).`,
     ]);
-    for (const row of result.prediction.rows) {
-      const milliseconds = Math.round(row.lap_time_s * 1000), minutes = Math.floor(milliseconds / 60000);
-      const time = `${minutes}:${((milliseconds % 60000) / 1000).toFixed(3).padStart(6, "0")}`;
-      addDetail(`${row.driver} | ${row.compound.toUpperCase()} | ${time}`, [
-        `Predicted flying lap; warmed tyres ${row.tyre_temperature_c.toFixed(1)} °C; balance ${row.balance.toFixed(1)}, traction ${row.traction.toFixed(1)}.`,
+    const lapTime = seconds => {
+      const ms = Math.round(seconds * 1000);
+      return `${Math.floor(ms / 60000)}:${((ms % 60000) / 1000).toFixed(3).padStart(6, "0")}`;
+    };
+    for (const row of result.grading.rows) {
+      const average = row.compound === "avg_dry";
+      const scores = average ? Object.values(row.compound_scores) : [row.score];
+      const times = average ? Object.values(row.compound_lap_times_s) : [row.lap_time_s];
+      addDetail(`${row.driver} | ${row.compound.toUpperCase()} | ${row.grade} (${scores.map(score => score.toFixed(2)).join("|")}/100) | ${times.map(lapTime).join(" | ")}`, average ? [
+        "The same entered setup, averaged across SOFT / MEDIUM / HARD. Each component uses its own reference.",
+      ] : [
+        `Pace ${row.pace_score.toFixed(2)}; preference fit ${row.preference_score.toFixed(2)}; pace loss ${row.pace_delta_s.toFixed(3)} s against ${lapTime(row.reference_lap_s)} reference.`,
+        `Warmed tyres ${row.tyre_temperature_c.toFixed(1)} °C; balance ${row.balance.toFixed(1)}, traction ${row.traction.toFixed(1)}.`,
       ]);
+      write_log("setup_graded", { validation, driver: row.driver, compound: row.compound, grade: row.grade, score: row.score,
+        ...(average ? { compound_scores: row.compound_scores } : { pace_score: row.pace_score, preference_score: row.preference_score,
+          pace_delta_s: row.pace_delta_s, reference_lap_s: row.reference_lap_s, reference_settings: row.reference_settings }) });
+    }
+    for (const row of result.prediction.rows) {
       write_log("lap_predicted", { validation, driver: row.driver, entry: row.entry, compound: row.compound,
         lap_time_s: row.lap_time_s, tyre_temperature_c: row.tyre_temperature_c,
         tyre_grip: [row.inputs.tyre_lat_mult, row.inputs.tyre_long_mult] });
     }
     write_log("lap_prediction_completed", { validation, seed: result.prediction.seed,
       wind: result.prediction.wind, timing_ms: result.prediction.timing_ms });
+    write_log("grading_completed", { validation, reference_laps_evaluated: result.grading.reference_laps_evaluated, timing_ms: result.grading.timing_ms });
     for (const driver of input.drivers) addDetail(`${driver.name} — entry ${driver.entry}`, [
       `Skills: ${Object.entries(driver.skills).map(([key, value]) => `${key} ${value.toFixed(2)}`).join("; ")}.`,
       `Preferences: balance ${driver.preferences.balance_preference}; traction ${driver.preferences.traction_preference}.`,
       ...driver.parts.map(part => `${part.label}: ${part.item.name}${part.item.condition === undefined ? "" : ` (${part.item.condition.toFixed(1)}% condition)`}`),
     ]);
     ui["input-results"].hidden = false;
-    ui.status.textContent = "Fixed-setup laps calculated locally. Grading and setup search are not included in this preview.";
+    ui.status.textContent = "Fixed setup graded locally. Setup search is not included in this preview.";
   });
   clear();
   return { setRoot, setMod, resetMod, clear, clearResult, refreshControls };

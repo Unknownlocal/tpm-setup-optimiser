@@ -50,7 +50,7 @@
       <div id="matches" aria-label="Matching mods"></div>
     </section>
     <section class="panel" aria-labelledby="input-title">
-      <h2 id="input-title">Preview fixed-setup laps</h2>
+      <h2 id="input-title">Grade a fixed setup</h2>
       <p id="engine-note" class="hint">Preparing independent lap engine…</p>
       <p id="input-mod" class="path"></p>
       <label for="save-choice">Save from the game folder</label>
@@ -84,15 +84,17 @@
           <label>Suspension<input id="setup-suspension" type="number" value="2" step="1"></label>
         </div>
       </details>
-      <button id="prepare-inputs" type="button" disabled>Predict laps</button>
+      <button id="prepare-inputs" type="button" disabled>Grade setup</button>
     </section>
     <section id="input-results" class="panel" aria-labelledby="input-result-title" hidden>
-      <h2 id="input-result-title">Fixed-setup lap predictions</h2>
+      <h2 id="input-result-title">Fixed-setup grades and lap predictions</h2>
       <p id="input-summary"></p>
       <p class="notice">Experimental preview for standard cars with fitted chassis baseline snapshots; developed part effects are not supported yet.
         Matches the desktop adapter's practice defaults: fresh, fully warmed tyres, 15 kg fuel, push pace,
         medium engine, balanced spec ERS and neutral tyre-supplier bonuses. No traffic, tyre wear or DRS.
-        Grading and setup search are not included.</p>
+        Grades combine 85% predicted pace and 15% driver preference fit. S+ starts at 98/100.
+        AVG_DRY scores the entered setup separately on S/M/H, then averages those scores.
+        Reference preparation is included in the displayed worker time. Setup search is not included.</p>
       <div id="input-details"></div>
     </section>
     <section id="results" class="panel" aria-labelledby="results-title" hidden>

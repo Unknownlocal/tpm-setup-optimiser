@@ -64,7 +64,7 @@ function request(type, payload, signal) {
     const id = ++nextId;
     const abort = () => {
       requests.delete(id);
-      if (type === "simulate-laps" || type === "predict-laps") worker.postMessage({ id, type: "cancel" });
+      if (["simulate-laps", "predict-laps", "grade-setups"].includes(type)) worker.postMessage({ id, type: "cancel" });
       write_log("worker_cancelled", { id, operation: type }); reject(signal.reason);
     };
     signal.addEventListener("abort", abort, { once: true });
