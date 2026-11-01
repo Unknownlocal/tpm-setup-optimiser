@@ -50,7 +50,7 @@
       <div id="matches" aria-label="Matching mods"></div>
     </section>
     <section class="panel" aria-labelledby="input-title">
-      <h2 id="input-title">Grade a fixed setup</h2>
+      <h2 id="input-title">Find a setup</h2>
       <p id="engine-note" class="hint">Preparing independent lap engine…</p>
       <p id="input-mod" class="path"></p>
       <label for="save-choice">Save from the game folder</label>
@@ -70,7 +70,7 @@
       <div class="input-grid">
         <label>Ambient temperature (°C)<input id="ambient" type="number" step="any" placeholder="Enter session temperature"></label>
         <label>Water depth (mm)<input id="water" type="number" min="0" max="5" step="any" value="0"></label>
-        <label>Compound codes<input id="input-compounds" value="SMH" maxlength="10" aria-describedby="compound-help"></label>
+        <label>Compound codes<input id="input-compounds" value="SMHIW" maxlength="10" aria-describedby="compound-help"></label>
         <label>Session seed (optional)<input id="session-seed" type="number" min="0" max="999999" step="1" placeholder="Random on each run"></label>
       </div>
       <p id="compound-help" class="hint">S soft · M medium · H hard · I intermediate · W wet. Temperature is entered manually for this stage.</p>
@@ -84,17 +84,30 @@
           <label>Suspension<input id="setup-suspension" type="number" value="2" step="1"></label>
         </div>
       </details>
+      <details>
+        <summary>Search limits</summary>
+        <div class="input-grid">
+          <label>Search seconds<input id="search-seconds" type="number" min="0.1" max="300" step="any" value="15"></label>
+          <label>Refinement laps after S+<input id="search-refine" type="number" min="2" step="1" value="500"></label>
+          <label>Stall laps<input id="search-stall" type="number" min="1" step="1" value="100"></label>
+          <label>Idle batches<input id="search-idle" type="number" min="1" step="1" value="64"></label>
+        </div>
+        <p class="hint">The search timer starts after every entry has complete reference setups and initial results.
+          Refinement counts new simulated laps; a cumulative 0.01-point gain resets the stall count.
+          Limits are checked after batches. Cancel keeps the best complete results.</p>
+      </details>
+      <button id="search-setups" type="button" disabled>Find setups</button>
       <button id="prepare-inputs" type="button" disabled>Grade setup</button>
     </section>
     <section id="input-results" class="panel" aria-labelledby="input-result-title" hidden>
-      <h2 id="input-result-title">Fixed-setup grades and lap predictions</h2>
+      <h2 id="input-result-title">Setups, grades and predicted laps</h2>
       <p id="input-summary"></p>
       <p class="notice">Experimental preview for standard cars with fitted chassis baseline snapshots; developed part effects are not supported yet.
         Matches the desktop adapter's practice defaults: fresh, fully warmed tyres, 15 kg fuel, push pace,
         medium engine, balanced spec ERS and neutral tyre-supplier bonuses. No traffic, tyre wear or DRS.
         Grades combine 85% predicted pace and 15% driver preference fit. S+ starts at 98/100.
-        AVG_DRY scores the entered setup separately on S/M/H, then averages those scores.
-        Reference preparation is included in the displayed worker time. Setup search is not included.</p>
+        AVG_DRY assesses one shared setup separately on S/M/H, then averages those scores.
+        Search results are the best found within the limits. Preparation is included in total time and excluded from the search timer.</p>
       <div id="input-details"></div>
     </section>
     <section id="results" class="panel" aria-labelledby="results-title" hidden>

@@ -2,6 +2,7 @@ import { droppedFolder, handleFolder, readCatalogue, resolveFolder, scanMetadata
 import { parseModQuery } from "./mod-resolver.js";
 import { createInputPanel } from "./input-panel.js";
 import { write_log } from "./debug-log.js";
+import { createSearchPool } from "./search-pool.js";
 
 const ui = Object.fromEntries([...document.querySelectorAll("[id]")].map(element => [element.id, element]));
 const worker = new Worker("/assets/metadata-worker.js", { type: "module" });
@@ -11,7 +12,8 @@ const dropSupported = typeof DataTransferItem !== "undefined" &&
   ["getAsEntry", "webkitGetAsEntry"].some(name => typeof DataTransferItem.prototype[name] === "function");
 let ready = false, busy = false, root = null, external = null, catalogue = null;
 let controller = new AbortController(), nextId = 0;
-const inputs = createInputPanel(ui, { job, request, invalidate, isReady: () => ready, isBusy: () => busy });
+const search = createSearchPool();
+const inputs = createInputPanel(ui, { job, request, invalidate, search, isReady: () => ready, isBusy: () => busy });
 
 function controls() {
   ui["choose-root"].disabled = !ready || !supported;
@@ -74,15 +76,17 @@ function request(type, payload, signal) {
   });
 }
 
-worker.onmessage = ({ data }) => {
+worker.onmessage = async ({ data }) => {
   if (data.ready) {
+    try { await search.ready; }
+    catch { worker.onerror({ preventDefault() {} }); return; }
     ready = true;
     ui.status.textContent = supported ? "Ready. Choose or drop your game folder to begin." : dropSupported
       ? "Ready. Drop your game folder or a mod folder to begin."
       : "This browser does not support local folder access for this POC.";
     controls();
     ui["engine-note"].textContent = "Lap engine loaded and self-test passed. Fixed-setup lap preview is ready.";
-    write_log("ready", { folder_picker: supported, folder_drop: dropSupported, lap_engine: data.lap_engine });
+    write_log("ready", { folder_picker: supported, folder_drop: dropSupported, lap_engine: data.lap_engine, search_workers: search.size });
     return;
   }
   const pending = requests.get(data.id);
@@ -240,7 +244,10 @@ ui["mod-query"].oninput = () => {
   ui.status.textContent = "Ready to inspect the entered mod.";
   controls();
 };
-ui.cancel.onclick = () => { invalidate(); ui.status.textContent = "Operation cancelled."; write_log("cancelled"); };
+ui.cancel.onclick = () => {
+  if (search.cancel()) { ui.status.textContent = "Stopping search; keeping complete best results…"; write_log("search_stop_requested"); return; }
+  invalidate(); ui.status.textContent = "Operation cancelled."; write_log("cancelled");
+};
 ui.clear.onclick = () => {
   invalidate();
   root = external = catalogue = null;

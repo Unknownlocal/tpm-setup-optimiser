@@ -1,8 +1,9 @@
 import { DEFINITION_FILES } from "./input-preparation.js";
 import { write_log, write_input_logs } from "./debug-log.js";
+import { renderResults } from "./result-panel.js";
 
 /** Keep local file selections in memory and display the worker's checked source inputs. */
-export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy }) {
+export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy, search }) {
   let mod = null, save = null, calendarDefault = null, preparationSignal = null;
   const saves = new Map(), tracks = new Map();
   function options(select, placeholder, entries = []) {
@@ -18,7 +19,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     ui["choose-save"].disabled = !isReady();
     ui["save-choice"].disabled = !isReady() || !saves.size;
     ui["track-choice"].disabled = !isReady() || !tracks.size;
-    ui["prepare-inputs"].disabled = !isReady() || isBusy() || !save || !mod || !ui["track-choice"].value;
+    ui["search-setups"].disabled = ui["prepare-inputs"].disabled = !isReady() || isBusy() || !save || !mod || !ui["track-choice"].value;
     ui["drop-save"].setAttribute("aria-disabled", String(!isReady()));
   }
   async function filesIn(folder, limit, signal) {
@@ -121,14 +122,6 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     ui["track-note"].textContent = ui["input-mod"].textContent = "";
     refreshControls();
   }
-  function addDetail(title, lines) {
-    const section = document.createElement("section"), heading = document.createElement("h3");
-    heading.textContent = title; section.append(heading);
-    for (const line of lines) {
-      const paragraph = document.createElement("p"); paragraph.textContent = line; section.append(paragraph);
-    }
-    ui["input-details"].append(section);
-  }
   ui["choose-save"].onclick = () => ui["save-file"].click();
   ui["save-file"].onchange = () => {
     const file = ui["save-file"].files[0]; ui["save-file"].value = "";
@@ -156,7 +149,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       await selectSave(files[0], signal);
     });
   };
-  for (const key of ["ambient", "water", "input-compounds", "session-seed", "setup-front", "setup-rear", "setup-front-pressure", "setup-rear-pressure", "setup-suspension"]) {
+  for (const key of ["ambient", "water", "input-compounds", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", "setup-front", "setup-rear", "setup-front-pressure", "setup-rear-pressure", "setup-suspension"]) {
     ui[key].oninput = () => {
       // Scenario edits invalidate validation results, but folder/calendar work can finish.
       if (preparationSignal && !preparationSignal.aborted) invalidate();
@@ -171,9 +164,9 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     ui.status.textContent = "Check the circuit and conditions to prepare inputs.";
     write_log("circuit_selected", { file: ui["track-choice"].value, name: ui["track-choice"].selectedOptions[0]?.textContent || null, selection: "manual" });
   };
-  ui["prepare-inputs"].onclick = () => job(async signal => {
+  async function calculate(signal, isSearch) {
     preparationSignal = signal;
-    ui.status.textContent = "Building reference setups and grading the entered setup locally…";
+    ui.status.textContent = isSearch ? "Preparing saved inputs for local setup search..." : "Building reference setups and grading the entered setup locally…";
     const files = {};
     for (const name of DEFINITION_FILES) {
       try { files[name] = await mod.file(name); }
@@ -182,56 +175,38 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     }
     const numeric = id => ui[id].value.trim() ? Number(ui[id].value) : NaN;
     const seed = ui["session-seed"].value.trim() ? numeric("session-seed") : Math.floor(Math.random() * 1000000);
-    const result = await request("grade-setups", { saveFile: save, trackFile: tracks.get(ui["track-choice"].value), files, seed, testing: calendarDefault?.testing === true,
+    const payload = { saveFile: save, trackFile: tracks.get(ui["track-choice"].value), files, seed, testing: calendarDefault?.testing === true,
       trackId: calendarDefault?.file === ui["track-choice"].value ? calendarDefault.track_id : undefined,
       weather: { temperature_c: numeric("ambient"), wetness_mm: numeric("water") }, compounds: ui["input-compounds"].value,
       settings: { front_wing: numeric("setup-front"), rear_wing: numeric("setup-rear"), front_pressure_psi: numeric("setup-front-pressure"),
-        rear_pressure_psi: numeric("setup-rear-pressure"), suspension_level: numeric("setup-suspension") } }, signal);
+        rear_pressure_psi: numeric("setup-rear-pressure"), suspension_level: numeric("setup-suspension") },
+      search: { seconds: numeric("search-seconds"), refine_laps: numeric("search-refine"), stall_laps: numeric("search-stall"), idle_batches: numeric("search-idle") } };
+    let result, validation;
+    if (isSearch) {
+      const prepared = await request("prepare-inputs", payload, signal);
+      signal.throwIfAborted();
+      validation = write_input_logs(prepared, { save: save.name, mod: ui["input-mod"].textContent, calendar: calendarDefault });
+      let lastLog = -Infinity;
+      result = await search.run(prepared, payload, signal, (checkpoint, reference) => {
+        if (signal.aborted) return;
+        if (checkpoint.grading.rows.length) renderResults(ui, checkpoint, { validation, diagnostics: false });
+        ui.status.textContent = reference ? `Preparing ${reference.driver} / ${reference.compound.toUpperCase()} reference...`
+          : `${checkpoint.search.status}: ${checkpoint.search.drivers_ready}/${checkpoint.search.drivers_total} entries; ${checkpoint.search.statistics.evaluated || 0} candidate laps.`;
+        if (performance.now() - lastLog >= 500) {
+          write_log("search_progress", { validation, phase: checkpoint.search.status, drivers_ready: checkpoint.search.drivers_ready,
+            drivers_total: checkpoint.search.drivers_total, evaluated: checkpoint.search.statistics.evaluated || 0 });
+          lastLog = performance.now();
+        }
+      });
+    } else result = await request("grade-setups", payload, signal);
     signal.throwIfAborted();
-    const input = result.source;
-    const validation = write_input_logs(result, { save: save.name, mod: ui["input-mod"].textContent, calendar: calendarDefault });
-    ui["input-summary"].textContent = `${input.team} · Season ${input.season}, week ${input.week} · ${input.track.name} · ${input.weather.temperature_c} °C · ${input.weather.wetness_mm} mm`;
-    addDetail("Scenario", [
-      `Data mod: ${ui["input-mod"].textContent}; saved pack reference: ${input.savedPack}.`,
-      `Compounds: ${input.tyres.map(tyre => tyre.name.toUpperCase()).join(" / ")}. Saved rules: ${input.activePolicies.car.name}; ${input.activePolicies.tyres.name}.`,
-      `Fixed setup: wings ${input.settings.front_wing}/${input.settings.rear_wing}; suspension ${input.settings.suspension_level}; pressures ${input.settings.front_pressure_psi}/${input.settings.rear_pressure_psi} psi.`,
-      `Loaded ${result.fileNames.length} files and ${result.constantsCount} literal constants. Selected mod definitions must match this save's career.`,
-      `Session seed: ${result.prediction.seed}; initial wind ${result.prediction.wind.speed_kmh.toFixed(1)} km/h, ${result.prediction.wind.direction_deg.toFixed(1)}°; worker time ${result.grading.timing_ms.end_to_end.toFixed(0)} ms (${result.grading.reference_laps_evaluated} reference laps).`,
-    ]);
-    const lapTime = seconds => {
-      const ms = Math.round(seconds * 1000);
-      return `${Math.floor(ms / 60000)}:${((ms % 60000) / 1000).toFixed(3).padStart(6, "0")}`;
-    };
-    for (const row of result.grading.rows) {
-      const average = row.compound === "avg_dry";
-      const scores = average ? Object.values(row.compound_scores) : [row.score];
-      const times = average ? Object.values(row.compound_lap_times_s) : [row.lap_time_s];
-      addDetail(`${row.driver} | ${row.compound.toUpperCase()} | ${row.grade} (${scores.map(score => score.toFixed(2)).join("|")}/100) | ${times.map(lapTime).join(" | ")}`, average ? [
-        "The same entered setup, averaged across SOFT / MEDIUM / HARD. Each component uses its own reference.",
-      ] : [
-        `Pace ${row.pace_score.toFixed(2)}; preference fit ${row.preference_score.toFixed(2)}; pace loss ${row.pace_delta_s.toFixed(3)} s against ${lapTime(row.reference_lap_s)} reference.`,
-        `Warmed tyres ${row.tyre_temperature_c.toFixed(1)} °C; balance ${row.balance.toFixed(1)}, traction ${row.traction.toFixed(1)}.`,
-      ]);
-      write_log("setup_graded", { validation, driver: row.driver, compound: row.compound, grade: row.grade, score: row.score,
-        ...(average ? { compound_scores: row.compound_scores } : { pace_score: row.pace_score, preference_score: row.preference_score,
-          pace_delta_s: row.pace_delta_s, reference_lap_s: row.reference_lap_s, reference_settings: row.reference_settings }) });
-    }
-    for (const row of result.prediction.rows) {
-      write_log("lap_predicted", { validation, driver: row.driver, entry: row.entry, compound: row.compound,
-        lap_time_s: row.lap_time_s, tyre_temperature_c: row.tyre_temperature_c,
-        tyre_grip: [row.inputs.tyre_lat_mult, row.inputs.tyre_long_mult] });
-    }
-    write_log("lap_prediction_completed", { validation, seed: result.prediction.seed,
-      wind: result.prediction.wind, timing_ms: result.prediction.timing_ms });
-    write_log("grading_completed", { validation, reference_laps_evaluated: result.grading.reference_laps_evaluated, timing_ms: result.grading.timing_ms });
-    for (const driver of input.drivers) addDetail(`${driver.name} — entry ${driver.entry}`, [
-      `Skills: ${Object.entries(driver.skills).map(([key, value]) => `${key} ${value.toFixed(2)}`).join("; ")}.`,
-      `Preferences: balance ${driver.preferences.balance_preference}; traction ${driver.preferences.traction_preference}.`,
-      ...driver.parts.map(part => `${part.label}: ${part.item.name}${part.item.condition === undefined ? "" : ` (${part.item.condition.toFixed(1)}% condition)`}`),
-    ]);
-    ui["input-results"].hidden = false;
-    ui.status.textContent = "Fixed setup graded locally. Setup search is not included in this preview.";
-  });
+    validation ??= write_input_logs(result, { save: save.name, mod: ui["input-mod"].textContent, calendar: calendarDefault });
+    if (result.grading.rows.length) renderResults(ui, result, { validation });
+    else { clearResult(); ui.status.textContent = "Search stopped before an entry finished preparation."; }
+    if (isSearch) write_log("search_completed", { validation, ...result.search });
+  }
+  ui["prepare-inputs"].onclick = () => job(signal => calculate(signal, false));
+  ui["search-setups"].onclick = () => job(signal => calculate(signal, true));
   clear();
   return { setRoot, setMod, resetMod, clear, clearResult, refreshControls };
 }

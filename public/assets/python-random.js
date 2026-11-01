@@ -33,4 +33,16 @@ export class PythonRandom {
   }
   random() { return ((this.uint32() >>> 5) * 67108864 + (this.uint32() >>> 6)) / 9007199254740992; }
   uniform(low, high) { return low + (high - low) * this.random(); }
+  integer(low, high) {
+    const size = high - low + 1, bits = Math.floor(Math.log2(size)) + 1;
+    let value;
+    do { value = this.uint32() >>> (32 - bits); } while (value >= size);
+    return low + value;
+  }
+  choice(values) { return values[this.integer(0, values.length - 1)]; }
+  pair() {
+    const pool = [0, 1, 2, 3, 4], first = this.integer(0, 4), a = pool[first];
+    pool[first] = pool[4];
+    return [a, pool[this.integer(0, 3)]];
+  }
 }
