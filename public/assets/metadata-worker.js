@@ -2,6 +2,7 @@ import { rankMods } from "./mod-resolver.js";
 import { prepareInputs, trackOptions } from "./input-preparation.js";
 import { resolveDefaultCircuit } from "./event-resolution.js";
 import { simulateLaps, lapEngineReadiness } from "./lap-physics.js";
+import { predictLaps } from "./save-laps.js";
 
 const lapJobs = new Map();
 
@@ -9,10 +10,10 @@ self.onmessage = async ({ data: { id, type, payload } }) => {
   if (type === "cancel") { lapJobs.get(id)?.abort(); return; }
   try {
     let result;
-    if (type === "simulate-laps") {
+    if (type === "simulate-laps" || type === "predict-laps") {
       const controller = new AbortController();
       lapJobs.set(id, controller);
-      try { result = await simulateLaps(payload, controller.signal); }
+      try { result = await (type === "predict-laps" ? predictLaps : simulateLaps)(payload, controller.signal); }
       finally { lapJobs.delete(id); }
     } else if (type === "default-circuit") {
       result = await resolveDefaultCircuit(payload);

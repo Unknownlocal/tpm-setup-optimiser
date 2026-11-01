@@ -64,7 +64,7 @@ function request(type, payload, signal) {
     const id = ++nextId;
     const abort = () => {
       requests.delete(id);
-      if (type === "simulate-laps") worker.postMessage({ id, type: "cancel" });
+      if (type === "simulate-laps" || type === "predict-laps") worker.postMessage({ id, type: "cancel" });
       write_log("worker_cancelled", { id, operation: type }); reject(signal.reason);
     };
     signal.addEventListener("abort", abort, { once: true });
@@ -81,7 +81,7 @@ worker.onmessage = ({ data }) => {
       ? "Ready. Drop your game folder or a mod folder to begin."
       : "This browser does not support local folder access for this POC.";
     controls();
-    ui["engine-note"].textContent = "Lap engine ready for prepared numerical inputs. Saved-car conversion and grading are the next stage.";
+    ui["engine-note"].textContent = "Lap engine loaded and self-test passed. Fixed-setup lap preview is ready.";
     write_log("ready", { folder_picker: supported, folder_drop: dropSupported, lap_engine: data.lap_engine });
     return;
   }

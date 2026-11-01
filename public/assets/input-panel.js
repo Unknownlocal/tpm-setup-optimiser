@@ -156,7 +156,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       await selectSave(files[0], signal);
     });
   };
-  for (const key of ["ambient", "water", "input-compounds", "setup-front", "setup-rear", "setup-front-pressure", "setup-rear-pressure", "setup-suspension"]) {
+  for (const key of ["ambient", "water", "input-compounds", "session-seed", "setup-front", "setup-rear", "setup-front-pressure", "setup-rear-pressure", "setup-suspension"]) {
     ui[key].oninput = () => {
       // Scenario edits invalidate validation results, but folder/calendar work can finish.
       if (preparationSignal && !preparationSignal.aborted) invalidate();
@@ -181,27 +181,42 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       signal.throwIfAborted();
     }
     const numeric = id => ui[id].value.trim() ? Number(ui[id].value) : NaN;
-    const result = await request("prepare-inputs", { saveFile: save, trackFile: tracks.get(ui["track-choice"].value), files,
+    const seed = ui["session-seed"].value.trim() ? numeric("session-seed") : Math.floor(Math.random() * 1000000);
+    const result = await request("predict-laps", { saveFile: save, trackFile: tracks.get(ui["track-choice"].value), files, seed, testing: calendarDefault?.testing === true,
+      trackId: calendarDefault?.file === ui["track-choice"].value ? calendarDefault.track_id : undefined,
       weather: { temperature_c: numeric("ambient"), wetness_mm: numeric("water") }, compounds: ui["input-compounds"].value,
       settings: { front_wing: numeric("setup-front"), rear_wing: numeric("setup-rear"), front_pressure_psi: numeric("setup-front-pressure"),
         rear_pressure_psi: numeric("setup-rear-pressure"), suspension_level: numeric("setup-suspension") } }, signal);
     signal.throwIfAborted();
     const input = result.source;
-    write_input_logs(result, { save: save.name, mod: ui["input-mod"].textContent, calendar: calendarDefault });
+    const validation = write_input_logs(result, { save: save.name, mod: ui["input-mod"].textContent, calendar: calendarDefault });
     ui["input-summary"].textContent = `${input.team} · Season ${input.season}, week ${input.week} · ${input.track.name} · ${input.weather.temperature_c} °C · ${input.weather.wetness_mm} mm`;
     addDetail("Scenario", [
       `Data mod: ${ui["input-mod"].textContent}; saved pack reference: ${input.savedPack}.`,
-      `Compounds: ${input.tyres.map(tyre => tyre.name.toUpperCase()).join(" / ")}. Active rules: ${input.activePolicies.car.name}; ${input.activePolicies.tyres.name}.`,
+      `Compounds: ${input.tyres.map(tyre => tyre.name.toUpperCase()).join(" / ")}. Saved rules: ${input.activePolicies.car.name}; ${input.activePolicies.tyres.name}.`,
       `Fixed setup: wings ${input.settings.front_wing}/${input.settings.rear_wing}; suspension ${input.settings.suspension_level}; pressures ${input.settings.front_pressure_psi}/${input.settings.rear_pressure_psi} psi.`,
       `Loaded ${result.fileNames.length} files and ${result.constantsCount} literal constants. Selected mod definitions must match this save's career.`,
+      `Session seed: ${result.prediction.seed}; initial wind ${result.prediction.wind.speed_kmh.toFixed(1)} km/h, ${result.prediction.wind.direction_deg.toFixed(1)}°; worker time ${result.prediction.timing_ms.end_to_end.toFixed(0)} ms.`,
     ]);
+    for (const row of result.prediction.rows) {
+      const milliseconds = Math.round(row.lap_time_s * 1000), minutes = Math.floor(milliseconds / 60000);
+      const time = `${minutes}:${((milliseconds % 60000) / 1000).toFixed(3).padStart(6, "0")}`;
+      addDetail(`${row.driver} | ${row.compound.toUpperCase()} | ${time}`, [
+        `Predicted flying lap; warmed tyres ${row.tyre_temperature_c.toFixed(1)} °C; balance ${row.balance.toFixed(1)}, traction ${row.traction.toFixed(1)}.`,
+      ]);
+      write_log("lap_predicted", { validation, driver: row.driver, entry: row.entry, compound: row.compound,
+        lap_time_s: row.lap_time_s, tyre_temperature_c: row.tyre_temperature_c,
+        tyre_grip: [row.inputs.tyre_lat_mult, row.inputs.tyre_long_mult] });
+    }
+    write_log("lap_prediction_completed", { validation, seed: result.prediction.seed,
+      wind: result.prediction.wind, timing_ms: result.prediction.timing_ms });
     for (const driver of input.drivers) addDetail(`${driver.name} — entry ${driver.entry}`, [
       `Skills: ${Object.entries(driver.skills).map(([key, value]) => `${key} ${value.toFixed(2)}`).join("; ")}.`,
       `Preferences: balance ${driver.preferences.balance_preference}; traction ${driver.preferences.traction_preference}.`,
       ...driver.parts.map(part => `${part.label}: ${part.item.name}${part.item.condition === undefined ? "" : ` (${part.item.condition.toFixed(1)}% condition)`}`),
     ]);
     ui["input-results"].hidden = false;
-    ui.status.textContent = "Source inputs validated locally. Saved-car conversion, grading and optimisation are the next stage.";
+    ui.status.textContent = "Fixed-setup laps calculated locally. Grading and setup search are not included in this preview.";
   });
   clear();
   return { setRoot, setMod, resetMod, clear, clearResult, refreshControls };

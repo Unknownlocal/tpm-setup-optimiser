@@ -31,4 +31,5 @@ export function write_input_logs(result, { save, mod, calendar }) {
       // Slot/name pairs retain every fitted item, even if slot names repeat.
       parts: driver.parts.map(part => [part.category, part.item.name]) });
   }
+  return run;
 }

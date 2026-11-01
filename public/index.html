@@ -50,7 +50,7 @@
       <div id="matches" aria-label="Matching mods"></div>
     </section>
     <section class="panel" aria-labelledby="input-title">
-      <h2 id="input-title">Prepare calculation inputs</h2>
+      <h2 id="input-title">Preview fixed-setup laps</h2>
       <p id="engine-note" class="hint">Preparing independent lap engine…</p>
       <p id="input-mod" class="path"></p>
       <label for="save-choice">Save from the game folder</label>
@@ -71,10 +71,11 @@
         <label>Ambient temperature (°C)<input id="ambient" type="number" step="any" placeholder="Enter session temperature"></label>
         <label>Water depth (mm)<input id="water" type="number" min="0" max="5" step="any" value="0"></label>
         <label>Compound codes<input id="input-compounds" value="SMH" maxlength="10" aria-describedby="compound-help"></label>
+        <label>Session seed (optional)<input id="session-seed" type="number" min="0" max="999999" step="1" placeholder="Random on each run"></label>
       </div>
       <p id="compound-help" class="hint">S soft · M medium · H hard · I intermediate · W wet. Temperature is entered manually for this stage.</p>
       <details>
-        <summary>Fixed setup for input validation</summary>
+        <summary>Fixed setup for lap prediction</summary>
         <div class="input-grid">
           <label>Front wing<input id="setup-front" type="number" value="20" step="1"></label>
           <label>Rear wing<input id="setup-rear" type="number" value="14" step="1"></label>
@@ -83,12 +84,15 @@
           <label>Suspension<input id="setup-suspension" type="number" value="2" step="1"></label>
         </div>
       </details>
-      <button id="prepare-inputs" type="button" disabled>Validate inputs</button>
+      <button id="prepare-inputs" type="button" disabled>Predict laps</button>
     </section>
     <section id="input-results" class="panel" aria-labelledby="input-result-title" hidden>
-      <h2 id="input-result-title">Calculation input summary</h2>
+      <h2 id="input-result-title">Fixed-setup lap predictions</h2>
       <p id="input-summary"></p>
-      <p class="notice">This validates saved equipment and calculation definitions. Connecting saved-car inputs to lap predictions, grades and setup search is the next stage.</p>
+      <p class="notice">Experimental preview for standard cars with fitted chassis baseline snapshots; developed part effects are not supported yet.
+        Matches the desktop adapter's practice defaults: fresh, fully warmed tyres, 15 kg fuel, push pace,
+        medium engine, balanced spec ERS and neutral tyre-supplier bonuses. No traffic, tyre wear or DRS.
+        Grading and setup search are not included.</p>
       <div id="input-details"></div>
     </section>
     <section id="results" class="panel" aria-labelledby="results-title" hidden>
