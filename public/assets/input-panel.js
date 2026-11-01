@@ -1,5 +1,5 @@
 import { DEFINITION_FILES } from "./input-preparation.js";
-import { write_log } from "./debug-log.js";
+import { write_log, write_input_logs } from "./debug-log.js";
 
 /** Keep local file selections in memory and display the worker's checked source inputs. */
 export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy }) {
@@ -187,10 +187,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
         rear_pressure_psi: numeric("setup-rear-pressure"), suspension_level: numeric("setup-suspension") } }, signal);
     signal.throwIfAborted();
     const input = result.source;
-    // Log selected source values, excluding the full save and raw pack definitions.
-    const { definitions, setupDefinitions, regulations, ...summary } = input;
-    write_log("inputs_validated", { save: { name: save.name, bytes: save.size }, mod: ui["input-mod"].textContent,
-      calendar_default: calendarDefault, file_names: result.fileNames, constants_count: result.constantsCount, source: summary });
+    write_input_logs(result, { save: save.name, mod: ui["input-mod"].textContent, calendar: calendarDefault });
     ui["input-summary"].textContent = `${input.team} · Season ${input.season}, week ${input.week} · ${input.track.name} · ${input.weather.temperature_c} °C · ${input.weather.wetness_mm} mm`;
     addDetail("Scenario", [
       `Data mod: ${ui["input-mod"].textContent}; saved pack reference: ${input.savedPack}.`,
