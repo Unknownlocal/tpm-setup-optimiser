@@ -1,9 +1,17 @@
 import { rankMods } from "./mod-resolver.js";
+import { prepareInputs, trackOptions } from "./input-preparation.js";
+import { resolveDefaultCircuit } from "./event-resolution.js";
 
-self.onmessage = ({ data: { id, type, payload } }) => {
+self.onmessage = async ({ data: { id, type, payload } }) => {
   try {
     let result;
-    if (type === "rank") {
+    if (type === "default-circuit") {
+      result = await resolveDefaultCircuit(payload);
+    } else if (type === "prepare-inputs") {
+      result = await prepareInputs(payload);
+    } else if (type === "track-options") {
+      result = await trackOptions(payload);
+    } else if (type === "rank") {
       result = rankMods(payload.query, payload.mods);
     } else if (type === "summarise") {
       const extensions = Object.create(null);
@@ -19,8 +27,8 @@ self.onmessage = ({ data: { id, type, payload } }) => {
       throw new Error("Unknown worker operation.");
     }
     self.postMessage({ id, result });
-  } catch {
-    self.postMessage({ id, error: "The browser worker could not process this metadata." });
+  } catch (error) {
+    self.postMessage({ id, error: String(error.message || "The browser worker could not process these inputs.").slice(0, 500) });
   }
 };
 

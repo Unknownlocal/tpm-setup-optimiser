@@ -1,5 +1,7 @@
 import { droppedFolder, handleFolder, readCatalogue, resolveFolder, scanMetadata } from "./folder-access.js";
 import { parseModQuery } from "./mod-resolver.js";
+import { createInputPanel } from "./input-panel.js";
+import { write_log } from "./debug-log.js";
 
 const ui = Object.fromEntries([...document.querySelectorAll("[id]")].map(element => [element.id, element]));
 const worker = new Worker("/assets/metadata-worker.js", { type: "module" });
@@ -9,6 +11,7 @@ const dropSupported = typeof DataTransferItem !== "undefined" &&
   ["getAsEntry", "webkitGetAsEntry"].some(name => typeof DataTransferItem.prototype[name] === "function");
 let ready = false, busy = false, root = null, external = null, catalogue = null;
 let controller = new AbortController(), nextId = 0;
+const inputs = createInputPanel(ui, { job, request, invalidate, isReady: () => ready, isBusy: () => busy });
 
 function controls() {
   ui["choose-root"].disabled = !ready || !supported;
@@ -18,6 +21,7 @@ function controls() {
   ui.cancel.disabled = !busy;
   ui.clear.disabled = !ready || (!supported && !dropSupported);
   for (const id of ["drop-root", "drop-mod"]) ui[id].setAttribute("aria-disabled", String(!ready || !dropSupported));
+  inputs.refreshControls();
 }
 
 function resetResults() {
@@ -26,6 +30,7 @@ function resetResults() {
   ui.files.replaceChildren();
   ui.matches.replaceChildren();
   ui["catalogue-note"].textContent = "";
+  inputs.clearResult();
 }
 
 function invalidate() {
@@ -43,8 +48,11 @@ async function job(action) {
   controls();
   try { await action(signal); }
   catch (error) {
-    if (!signal.aborted) ui.status.textContent = error.name === "AbortError"
-      ? "Folder selection cancelled or access was blocked by the browser." : error.message;
+    if (!signal.aborted) {
+      ui.status.textContent = error.name === "AbortError"
+        ? "Folder selection cancelled or access was blocked by the browser." : error.message;
+      write_log("operation_failed", { name: error.name, message: ui.status.textContent });
+    }
   } finally {
     if (signal === controller.signal) { busy = false; controls(); }
   }
@@ -54,9 +62,10 @@ function request(type, payload, signal) {
   return new Promise((resolve, reject) => {
     signal.throwIfAborted();
     const id = ++nextId;
-    const abort = () => { requests.delete(id); reject(signal.reason); };
+    const abort = () => { requests.delete(id); write_log("worker_cancelled", { id, operation: type }); reject(signal.reason); };
     signal.addEventListener("abort", abort, { once: true });
-    requests.set(id, { resolve, reject, cleanup: () => signal.removeEventListener("abort", abort) });
+    requests.set(id, { resolve, reject, type, started: performance.now(), cleanup: () => signal.removeEventListener("abort", abort) });
+    write_log("worker_requested", { id, operation: type });
     worker.postMessage({ id, type, payload });
   });
 }
@@ -68,12 +77,15 @@ worker.onmessage = ({ data }) => {
       ? "Ready. Drop your game folder or a mod folder to begin."
       : "This browser does not support local folder access for this POC.";
     controls();
+    write_log("ready", { folder_picker: supported, folder_drop: dropSupported });
     return;
   }
   const pending = requests.get(data.id);
   if (!pending) return; // A previous scan was cancelled or cleared.
   requests.delete(data.id);
   pending.cleanup();
+  write_log(data.error ? "worker_failed" : "worker_completed", { id: data.id, operation: pending.type,
+    elapsed_ms: Math.round(performance.now() - pending.started), ...(data.error ? { message: data.error } : {}) });
   if (data.error) pending.reject(new Error(data.error));
   else pending.resolve(data.result);
 };
@@ -82,6 +94,7 @@ worker.onerror = event => {
   ready = false;
   invalidate();
   ui.status.textContent = "The browser worker could not run. Reload this page to retry.";
+  write_log("worker_unavailable", { message: ui.status.textContent });
 };
 
 function formatBytes(bytes) {
@@ -115,6 +128,9 @@ async function inspectFolder(folder, label, signal) {
     ui.files.append(row);
   }
   ui.results.hidden = false;
+  await inputs.setMod(folder, label, signal);
+  signal.throwIfAborted();
+  write_log("mod_inspected", { folder: label, files: summary.count, partial: scan.partial, unreadable: scan.unreadable });
   ui.status.textContent = `Inspection complete${scan.partial || scan.unreadable ? " (partial)" : ""}. Processed locally by a browser worker.`;
 }
 
@@ -131,12 +147,15 @@ async function selectFolder(folder, isRoot, signal) {
     catalogue = null;
     ui["root-name"].textContent = folder.name;
     ui["mod-query"].value = "";
+    await inputs.setRoot(folder, signal);
     ui.status.textContent = "Game folder selected. Enter a mod folder, relative path or title.";
   } else {
     external = folder;
+    inputs.resetMod();
     ui["mod-query"].value = folder.name;
     ui.status.textContent = `Separate folder selected: ${folder.name}. Click Inspect.`;
   }
+  write_log("folder_selected", { role: isRoot ? "game_root" : "data_mod", name: folder.name });
 }
 
 for (const [button, isRoot] of [["choose-root", true], ["choose-mod", false]]) {
@@ -210,16 +229,19 @@ ui.inspect.onclick = () => job(async signal => {
 
 ui["mod-query"].oninput = () => {
   invalidate();
+  inputs.resetMod();
   external = null;
   ui.status.textContent = "Ready to inspect the entered mod.";
   controls();
 };
-ui.cancel.onclick = () => { invalidate(); ui.status.textContent = "Inspection cancelled."; };
+ui.cancel.onclick = () => { invalidate(); ui.status.textContent = "Operation cancelled."; write_log("cancelled"); };
 ui.clear.onclick = () => {
   invalidate();
   root = external = catalogue = null;
+  inputs.clear();
   ui["root-name"].textContent = "No game folder selected";
   ui["mod-query"].value = "";
   ui.status.textContent = "Selection and results cleared.";
+  write_log("cleared");
   controls();
 };

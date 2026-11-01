@@ -18,6 +18,11 @@ p { margin: 10px 0; }
 .drop-zone.drag-over { background: #e3f3ed; border-color: #11684d; }
 label { display: block; font-weight: 650; margin-bottom: 7px; }
 input:not([type=file]) { width: 100%; padding: 12px; border: 1px solid #8c9ba9; border-radius: 6px; font: inherit; }
+select { width: 100%; padding: 12px; border: 1px solid #8c9ba9; border-radius: 6px; background: white; color: inherit; font: inherit; margin-bottom: 10px; }
+.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin: 18px 0; }
+details { margin: 20px 0; } summary { cursor: pointer; font-weight: 600; }
+#input-details section { border-top: 1px solid #e4e9ed; margin-top: 20px; padding-top: 10px; }
+#input-details p { overflow-wrap: anywhere; font-size: .9rem; }
 button { border: 1px solid #174d6d; border-radius: 6px; padding: 10px 17px; font: inherit; font-weight: 600; background: #174d6d; color: white; cursor: pointer; }
 button.secondary { background: white; color: #174d6d; border-color: #c0ccd5; }
 button:disabled { opacity: .45; cursor: default; }
