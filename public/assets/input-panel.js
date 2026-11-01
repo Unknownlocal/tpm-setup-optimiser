@@ -201,7 +201,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       ...driver.parts.map(part => `${part.label}: ${part.item.name}${part.item.condition === undefined ? "" : ` (${part.item.condition.toFixed(1)}% condition)`}`),
     ]);
     ui["input-results"].hidden = false;
-    ui.status.textContent = "Source inputs validated locally. Lap physics and optimisation are the next stage.";
+    ui.status.textContent = "Source inputs validated locally. Saved-car conversion, grading and optimisation are the next stage.";
   });
   clear();
   return { setRoot, setMod, resetMod, clear, clearResult, refreshControls };

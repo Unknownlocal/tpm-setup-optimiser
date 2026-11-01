@@ -1,11 +1,20 @@
 import { rankMods } from "./mod-resolver.js";
 import { prepareInputs, trackOptions } from "./input-preparation.js";
 import { resolveDefaultCircuit } from "./event-resolution.js";
+import { simulateLaps, lapEngineReadiness } from "./lap-physics.js";
+
+const lapJobs = new Map();
 
 self.onmessage = async ({ data: { id, type, payload } }) => {
+  if (type === "cancel") { lapJobs.get(id)?.abort(); return; }
   try {
     let result;
-    if (type === "default-circuit") {
+    if (type === "simulate-laps") {
+      const controller = new AbortController();
+      lapJobs.set(id, controller);
+      try { result = await simulateLaps(payload, controller.signal); }
+      finally { lapJobs.delete(id); }
+    } else if (type === "default-circuit") {
       result = await resolveDefaultCircuit(payload);
     } else if (type === "prepare-inputs") {
       result = await prepareInputs(payload);
@@ -28,9 +37,10 @@ self.onmessage = async ({ data: { id, type, payload } }) => {
     }
     self.postMessage({ id, result });
   } catch (error) {
+    if (error.name === "AbortError") return;
     self.postMessage({ id, error: String(error.message || "The browser worker could not process these inputs.").slice(0, 500) });
   }
 };
 
 // All worker modules are imported before the UI enables local folder access.
-self.postMessage({ ready: true });
+self.postMessage({ ready: true, lap_engine: await lapEngineReadiness() });

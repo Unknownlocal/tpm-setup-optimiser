@@ -62,7 +62,11 @@ function request(type, payload, signal) {
   return new Promise((resolve, reject) => {
     signal.throwIfAborted();
     const id = ++nextId;
-    const abort = () => { requests.delete(id); write_log("worker_cancelled", { id, operation: type }); reject(signal.reason); };
+    const abort = () => {
+      requests.delete(id);
+      if (type === "simulate-laps") worker.postMessage({ id, type: "cancel" });
+      write_log("worker_cancelled", { id, operation: type }); reject(signal.reason);
+    };
     signal.addEventListener("abort", abort, { once: true });
     requests.set(id, { resolve, reject, type, started: performance.now(), cleanup: () => signal.removeEventListener("abort", abort) });
     write_log("worker_requested", { id, operation: type });
@@ -77,7 +81,8 @@ worker.onmessage = ({ data }) => {
       ? "Ready. Drop your game folder or a mod folder to begin."
       : "This browser does not support local folder access for this POC.";
     controls();
-    write_log("ready", { folder_picker: supported, folder_drop: dropSupported });
+    ui["engine-note"].textContent = "Lap engine ready for prepared numerical inputs. Saved-car conversion and grading are the next stage.";
+    write_log("ready", { folder_picker: supported, folder_drop: dropSupported, lap_engine: data.lap_engine });
     return;
   }
   const pending = requests.get(data.id);
@@ -94,6 +99,7 @@ worker.onerror = event => {
   ready = false;
   invalidate();
   ui.status.textContent = "The browser worker could not run. Reload this page to retry.";
+  ui["engine-note"].textContent = "Lap engine unavailable.";
   write_log("worker_unavailable", { message: ui.status.textContent });
 };
 
