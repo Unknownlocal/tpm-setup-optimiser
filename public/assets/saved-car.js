@@ -1,29 +1,12 @@
-import { clamp, finite, requireValue } from "./lap-contract.js";
+import { clamp, requireValue } from "./lap-contract.js";
+import { fittedRatings } from "./chassis-ratings.js";
+import { ZONES } from "./part-effects.js";
 
-const ZONES = ["slow", "med", "high", "straight"];
-const MAIN = ["team_pace", "acceleration", "braking", "tyre_management", "aero_efficiency_rating"];
 export const partFor = (driver, category) => driver.parts.find(part => part.category === category);
 
-/** Only accept the fitted baseline format verified for this first end-to-end slice.
- * Developed/older chassis effects need their own parity gate before they are usable. */
+/** Add fitted suppliers and equipment to the reconstructed car ratings. */
 export function fittedCar(source, driver) {
-  const chassisItem = partFor(driver, "chassis").item, effect = chassisItem.effect;
-  const baseline = effect.baseline_targets;
-  const designYear = chassisItem.design_year ?? Number(/^C(\d+)-/u.exec(chassisItem.name)?.[1] || source.calendarYear);
-  requireValue(baseline && !effect.seasonal_package && !chassisItem.name.toLowerCase().includes("(old)") && designYear >= source.calendarYear,
-    "This lap preview needs a fitted chassis with a current baseline snapshot.");
-  requireValue(!effect.baseline_edit_keys?.length, "Edited chassis baseline limits are not supported by this lap preview yet.");
-  for (const part of driver.parts.filter(part => source.definitions.car_parts.order.includes(part.category))) {
-    const e = part.item.effect;
-    const deltas = [...Object.values(e.rating_effects || {}), ...Object.values(e.pace || {}), ...Object.values(e.attr || {}),
-      ...["team_pace", "acceleration", "braking", "car_mass_kg", "lap_time", "aero_efficiency_rating", "tyre_wear", "tyre_management", "reliability", "dirty_air", "year_old_debuff"].map(key => e[key] || 0)];
-    requireValue(!e.seasonal_package && deltas.every(value => value === 0), `Developed effects on ${part.item.name} are not supported by this lap preview yet.`);
-  }
-  const row = {};
-  for (const key of [...ZONES, ...MAIN]) row[key] = clamp(finite(baseline[key], `fitted chassis ${key}`), 0, 100);
-  row.car_mass_kg = finite(effect.car_mass_kg_target ?? effect.car_mass_kg_current, "fitted chassis mass", 300);
-  row.car_mass_kg = Math.max(row.car_mass_kg, 640);
-  for (const key of [...ZONES, ...MAIN]) row[key] = Math.min(row[key], clamp(finite(effect.potential?.[key], `fitted chassis potential ${key}`), 0, 100));
+  const { row, chassis } = fittedRatings(source, driver);
   const attrs = { ...row };
   // The desktop adapter builds a fresh session with the default electronics ban.
   // It does not apply the saved regulation manager's pending/runtime effects.
@@ -45,7 +28,7 @@ export function fittedCar(source, driver) {
   for (const key of [...ZONES, "acceleration", "braking"]) attrs[key] = clamp(attrs[key], 0, 100) - 50 + (supplier[key] || 0);
   attrs.straight += level("active_aero");
   attrs.team_pace = clamp(row.team_pace, 0, 100) - 50 + (supplier.team_pace || 0);
-  return { attrs, chassis: effect, aero: row.aero_efficiency_rating, wetBonus: level("active_aero"), protectedTemperature: level("advanced_tpms") === 5 };
+  return { attrs, chassis, aero: row.aero_efficiency_rating, wetBonus: level("active_aero"), protectedTemperature: level("advanced_tpms") === 5 };
 }
 
 function roundEven(value) {

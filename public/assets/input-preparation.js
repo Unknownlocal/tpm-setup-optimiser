@@ -225,7 +225,7 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
       wetness_mm: number(weather.wetness_mm, "Water depth", 0, 5) },
     settings: selectedSetup.settings, setupDefinitions: selectedSetup.definitions, setupModel: model.id, setupAxes: selectedSetup.axes,
     teamInputs: pick(team, ["attr", "team_pace", "braking", "acceleration", "car_mass_kg", "tyre_management",
-      "aero_efficiency_rating", "chassis_profile", "part_understanding_laps", "tyre_contract"]),
+      "aero_efficiency_rating", "chassis_profile", "chassis_designs", "part_understanding_laps", "tyre_contract"]),
     tyreSupplier: { ...tyreSupplier, name: supplierName }, tyres,
     activePolicies: { car: carPolicy, tyres: tyrePolicy }, regulations: save.regulations,
     sessionOptions: definitions.options,
