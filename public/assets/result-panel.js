@@ -14,9 +14,11 @@ export function renderResults(ui, result, { validation, diagnostics = true }) {
   }
   ui["input-details"].replaceChildren();
   const input = result.source;
-  ui["input-summary"].textContent = `${input.team} · Season ${input.season}, week ${input.week} · ${input.track.name} · ${input.weather.temperature_c} °C · ${input.weather.wetness_mm} mm`;
+  const temperature = input.weather.temperature_source === "generated" ? input.weather.temperature_c.toFixed(2) : String(input.weather.temperature_c);
+  ui["input-summary"].textContent = `${input.team} · Season ${input.season}, week ${input.week} · ${input.track.name} · ${temperature} °C · ${input.weather.wetness_mm} mm`;
   addDetail("Scenario", [
     `Data mod: ${ui["input-mod"].textContent}; saved pack reference: ${input.savedPack}.`,
+    `Ambient temperature: ${temperature} °C (${input.weather.temperature_source === "generated" ? `generated session average across ${input.weather.temperature_laps} laps` : "entered manually"}).`,
     `Compounds: ${input.tyres.map(tyre => tyre.name.toUpperCase()).join(" / ")}. Saved rules: ${input.activePolicies.car.name}; ${input.activePolicies.tyres.name}.`,
     `${result.search ? "Starting setup" : "Fixed setup"}: ${input.setupAxes.map(axis => `${axis.label}: ${settingText(axis, input.settings[axis.key])}`).join("; ")}.`,
     `Loaded ${result.fileNames.length} files and ${result.constantsCount} literal constants. Selected mod definitions must match this save's career.`,

@@ -1,5 +1,6 @@
 import { parseConstants } from "./python-literals.js";
 import { setupModel, resolveSetupAxes } from "./setup-model.js";
+import { resolveTemperature } from "./session-temperature.js";
 
 export const DEFINITION_FILES = ["config.json", "tyremodel.json", "parts.json", "car_parts.json",
   "car_concepts.json", "engines.json", "regulations.json", "options.json", "constants.py"];
@@ -58,7 +59,7 @@ function validateTrack(raw) {
     number(sector.length_pct, `Micro sector ${index + 1} length`, Number.MIN_VALUE);
     number(sector.target_speed_kmh, `Micro sector ${index + 1} target speed`, Number.MIN_VALUE);
   }
-  return pick(raw, ["name", "length_km", "micro_sectors", "points", "sector_splits", "fuel_consumption", "tyre_wear_mult", "lap_modifier", "drs_zones", "nationality"]);
+  return pick(raw, ["name", "length_km", "micro_sectors", "points", "sector_splits", "fuel_consumption", "tyre_wear_mult", "lap_modifier", "drs_zones", "nationality", "wet_weather_probability_multiplier"]);
 }
 
 function activePolicy(save, definitions, key) {
@@ -156,7 +157,7 @@ function driverInputs(save, team, definitions) {
 }
 
 /** Read local source data. Keep unrelated save and options fields out of the result. */
-export async function prepareInputs({ saveFile, trackFile, files, weather, settings, compounds }) {
+export async function prepareInputs({ saveFile, trackFile, files, weather, settings, compounds, seed }) {
   object(files, "Definition files");
   const total = saveFile?.size + trackFile?.size + Object.values(files).reduce((sum, file) => sum + file.size, 0);
   requireValue(total <= 96 * 1024 * 1024, "Selected input files exceed 96 MiB.");
@@ -176,7 +177,7 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
       definitions.constants = parseConstants((await files[name].text()).replace(/^\uFEFF/u, ""));
     } else {
       const raw = object(await readJson(files[name], name), name);
-      definitions[name.slice(0, -5)] = name === "options.json" ? pick(raw, ["variability_level", "wind_enabled"]) : raw;
+      definitions[name.slice(0, -5)] = name === "options.json" ? pick(raw, ["variability_level", "wind_enabled", "laps"]) : raw;
     }
   }
   const track = validateTrack(await readJson(trackFile, "Selected circuit"));
@@ -221,7 +222,7 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
     calendarYear: number(save.save_editor_calendar_year ?? (definitions.constants.SEASON_START_YEAR ?? 2025) + save.season_no - 1, "Calendar year", 1),
     week: number(save.week_index, "Saved week index", 0) + 1,
     savedPack: text(save.data_pack, "Saved data pack"), track, drivers,
-    weather: { temperature_c: number(weather.temperature_c, "Manual ambient temperature"),
+    weather: { temperature_c: weather.temperature_c == null ? null : number(weather.temperature_c, "Manual ambient temperature"),
       wetness_mm: number(weather.wetness_mm, "Water depth", 0, 5) },
     settings: selectedSetup.settings, setupDefinitions: selectedSetup.definitions, setupModel: model.id, setupAxes: selectedSetup.axes,
     teamInputs: pick(team, ["attr", "team_pace", "braking", "acceleration", "car_mass_kg", "tyre_management",
@@ -229,12 +230,14 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
     tyreSupplier: { ...tyreSupplier, name: supplierName }, tyres,
     activePolicies: { car: carPolicy, tyres: tyrePolicy }, regulations: save.regulations,
     sessionOptions: definitions.options,
+    trackLapModifiersEnabled: save.track_lap_modifiers_enabled ?? true,
     dynamicsStaff: list(save.staff, "Saved staff").filter(staff => staff.contract?.team === teamName && staff.role === "head_of_dynamics")
       .map(staff => pick(staff, ["skill", "skills", "morale_effects"])),
     definitions,
   };
   const engineNames = [team.engine, team.engine_supplier, team.engine_contract?.supplier, team.engine_contract?.engine].filter(value => typeof value === "string");
   source.teamInputs.engineSignatures = [...engineNames, ...engineNames.map(name => definitions.engines.suppliers?.[name]?.engine).filter(value => typeof value === "string")];
+  source.weather = resolveTemperature(source, seed);
   // JSON accepts overlarge exponents as Infinity; reject unusable numeric inputs.
   function finiteTree(value, depth = 0) {
     requireValue(depth <= 64, "Input definitions are nested too deeply.");

@@ -68,12 +68,12 @@
       <select id="track-choice" disabled><option value="">Select a circuit…</option></select>
       <p id="track-note" class="hint">Choose a save and inspect its data mod to default to the next event. You can also choose a circuit manually.</p>
       <div class="input-grid">
-        <label>Ambient temperature (°C)<input id="ambient" type="number" step="any" placeholder="Enter session temperature"></label>
+        <label>Ambient temperature (°C, optional)<input id="ambient" type="number" step="any" placeholder="Generate session average"></label>
         <label>Water depth (mm)<input id="water" type="number" min="0" max="5" step="any" value="0"></label>
         <label>Compound codes<input id="input-compounds" value="SMHIW" maxlength="10" aria-describedby="compound-help"></label>
         <label>Session seed (optional)<input id="session-seed" type="number" min="0" max="999999" step="1" placeholder="Random on each run"></label>
       </div>
-      <p id="compound-help" class="hint">S soft · M medium · H hard · I intermediate · W wet. Temperature is entered manually for this stage.</p>
+      <p id="compound-help" class="hint">S soft · M medium · H hard · I intermediate · W wet. Leave temperature blank for a generated session average, or enter the game's displayed temperature. Water depth stays at your chosen value.</p>
       <details>
         <summary>Setup to grade or start from</summary>
         <div id="setup-fields" class="input-grid"></div>

@@ -42,7 +42,16 @@ export class PythonRandom {
   }
   choice(values) { return values[this.integer(0, values.length - 1)]; }
   sampleIndices(size, count) {
-    const pool = Array.from({ length: size }, (_, i) => i), selected = [];
+    const selected = [], threshold = 21 + (count > 5 ? 4 ** Math.ceil(Math.log(count * 3) / Math.log(4)) : 0);
+    if (size > threshold) {
+      const used = new Set();
+      for (let i = 0; i < count; i++) {
+        let index; do { index = this.integer(0, size - 1); } while (used.has(index));
+        used.add(index); selected.push(index);
+      }
+      return selected;
+    }
+    const pool = Array.from({ length: size }, (_, i) => i);
     for (let i = 0; i < count; i++) {
       const index = this.integer(0, size - i - 1);
       selected.push(pool[index]); pool[index] = pool[size - i - 1];

@@ -1,6 +1,7 @@
 import { clamp, requireValue } from "./lap-contract.js";
 import { fittedRatings } from "./chassis-ratings.js";
 import { ZONES } from "./part-effects.js";
+import { roundEven } from "./python-numbers.js";
 
 export const partFor = (driver, category) => driver.parts.find(part => part.category === category);
 
@@ -29,11 +30,6 @@ export function fittedCar(source, driver) {
   attrs.straight += level("active_aero");
   attrs.team_pace = clamp(row.team_pace, 0, 100) - 50 + (supplier.team_pace || 0);
   return { attrs, chassis, aero: row.aero_efficiency_rating, wetBonus: level("active_aero"), protectedTemperature: level("advanced_tpms") === 5 };
-}
-
-function roundEven(value) {
-  const low = Math.floor(value), fraction = value - low;
-  return fraction === .5 ? low + (low % 2) : Math.round(value);
 }
 
 /** Preserve both wear stages present in the desktop adapter's native pipeline. */
