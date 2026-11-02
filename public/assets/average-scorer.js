@@ -1,5 +1,5 @@
 import { gradeFromScore } from "./setup-grading.js";
-import { settingKey, ticks } from "./search-settings.js";
+import { settingKey } from "./search-settings.js";
 
 /** A shared setup must be assessed separately against all three dry references. */
 export class AverageScorer {
@@ -10,7 +10,7 @@ export class AverageScorer {
       this.stats.pruned++; return false;
     });
     const components = [];
-    for (const scorer of this.scorers) components.push(new Map((await scorer.evaluate(values, -1, signal)).map(row => [settingKey(ticks(row.settings)), row])));
+    for (const scorer of this.scorers) components.push(new Map((await scorer.evaluate(values, -1, signal)).map(row => [settingKey(scorer.space.toTicks(row.settings)), row])));
     return values.map(value => {
       const rows = components.map(component => component.get(settingKey(value))), score = rows.reduce((sum, row) => sum + row.score, 0) / 3;
       return { driver: rows[0].driver, entry: rows[0].entry, compound: "avg_dry", settings: rows[0].settings, score, grade: gradeFromScore(score),

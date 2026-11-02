@@ -1,16 +1,16 @@
 import { assessSetup } from "./setup-grading.js";
-import { settingKey, settingsFromTicks } from "./search-settings.js";
+import { settingKey } from "./search-settings.js";
 
 /** One driver/compound cache, valid only while its fitted car and conditions stay fixed. */
 export class CompoundScorer {
-  constructor(scenario, driver, compound, reference, stats) {
-    Object.assign(this, { scenario, driver, compound, reference, stats });
+  constructor(scenario, driver, compound, reference, stats, space) {
+    Object.assign(this, { scenario, driver, compound, reference, stats, space });
     this.cache = new Map(); this.bestKnown = null;
   }
   info(value) {
     const key = settingKey(value);
     if (!this.cache.has(key)) {
-      const row = this.scenario.row(this.driver, this.compound, settingsFromTicks(value));
+      const row = this.scenario.row(this.driver, this.compound, this.space.toSettings(value));
       const error = Math.abs(row.balance - this.driver.preferences.balance_preference) + Math.abs(row.traction - this.driver.preferences.traction_preference);
       this.cache.set(key, { settings: row.settings, fit: 100 * Math.max(0, 1 - error / 70) });
     }
@@ -27,7 +27,7 @@ export class CompoundScorer {
     }
     for (let i = 0; i < pending.length; i += 16) {
       signal?.throwIfAborted();
-      const batch = pending.slice(i, i + 16), rows = batch.map(value => this.scenario.row(this.driver, this.compound, settingsFromTicks(value)));
+      const batch = pending.slice(i, i + 16), rows = batch.map(value => this.scenario.row(this.driver, this.compound, this.space.toSettings(value)));
       await this.scenario.laps(rows, signal);
       this.stats.evaluated += rows.length;
       rows.forEach((row, index) => {

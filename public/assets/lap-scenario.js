@@ -10,6 +10,7 @@ import { simulateLaps } from "./lap-physics.js";
  * medium engine, balanced spec ERS, neutral tyre supplier, no rubber or DRS. */
 export async function createLapScenario(source, payload, signal) {
   signal?.throwIfAborted();
+  requireValue(source.setupModel === "formula", "This lap adapter has only been verified for Formula racing.");
   requireValue(["corner_speed_multiplier", "acceleration_multiplier", "braking_multiplier", "drag_multiplier"].every(key => source.activePolicies.car[key] === 1),
     "This lap preview currently supports the standard car profile only.");
   const seed = finite(payload.seed, "session seed", 0, 999999);

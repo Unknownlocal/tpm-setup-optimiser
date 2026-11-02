@@ -1,11 +1,19 @@
 import { DEFINITION_FILES } from "./input-preparation.js";
 import { write_log, write_input_logs } from "./debug-log.js";
 import { renderResults } from "./result-panel.js";
+import { setupModel } from "./setup-model.js";
 
 /** Keep local file selections in memory and display the worker's checked source inputs. */
 export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy, search }) {
   let mod = null, save = null, calendarDefault = null, preparationSignal = null;
   const saves = new Map(), tracks = new Map();
+  const setupAxes = setupModel("formula").axes;
+  for (const axis of setupAxes) {
+    const label = document.createElement("label"), control = document.createElement("input");
+    label.append(document.createTextNode(`${axis.label}${axis.unit ? ` (${axis.unit})` : ""}`));
+    control.id = axis.control; control.type = "number"; control.step = String(1 / axis.scale); control.value = String(axis.initial);
+    ui[axis.control] = control; label.append(control); ui["setup-fields"].append(label);
+  }
   function options(select, placeholder, entries = []) {
     select.replaceChildren(new Option(placeholder, ""));
     for (const [value, label] of entries) select.add(new Option(label, value));
@@ -149,7 +157,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       await selectSave(files[0], signal);
     });
   };
-  for (const key of ["ambient", "water", "input-compounds", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", "setup-front", "setup-rear", "setup-front-pressure", "setup-rear-pressure", "setup-suspension"]) {
+  for (const key of ["ambient", "water", "input-compounds", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", ...setupAxes.map(axis => axis.control)]) {
     ui[key].oninput = () => {
       // Scenario edits invalidate validation results, but folder/calendar work can finish.
       if (preparationSignal && !preparationSignal.aborted) invalidate();
@@ -178,8 +186,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     const payload = { saveFile: save, trackFile: tracks.get(ui["track-choice"].value), files, seed, testing: calendarDefault?.testing === true,
       trackId: calendarDefault?.file === ui["track-choice"].value ? calendarDefault.track_id : undefined,
       weather: { temperature_c: numeric("ambient"), wetness_mm: numeric("water") }, compounds: ui["input-compounds"].value,
-      settings: { front_wing: numeric("setup-front"), rear_wing: numeric("setup-rear"), front_pressure_psi: numeric("setup-front-pressure"),
-        rear_pressure_psi: numeric("setup-rear-pressure"), suspension_level: numeric("setup-suspension") },
+      settings: Object.fromEntries(setupAxes.map(axis => [axis.key, numeric(axis.control)])),
       search: { seconds: numeric("search-seconds"), refine_laps: numeric("search-refine"), stall_laps: numeric("search-stall"), idle_batches: numeric("search-idle") } };
     let result, validation;
     if (isSearch) {

@@ -1,4 +1,5 @@
-/** MT19937 with Python's integer seeding and 53-bit random() output. */
+/** Reproduce seeded game conditions in the browser, where CPython is unavailable.
+ * Reusing this generator for search also keeps seeded proposals repeatable. */
 export class PythonRandom {
   constructor(seed) {
     this.state = new Uint32Array(624);
@@ -40,9 +41,12 @@ export class PythonRandom {
     return low + value;
   }
   choice(values) { return values[this.integer(0, values.length - 1)]; }
-  pair() {
-    const pool = [0, 1, 2, 3, 4], first = this.integer(0, 4), a = pool[first];
-    pool[first] = pool[4];
-    return [a, pool[this.integer(0, 3)]];
+  sampleIndices(size, count) {
+    const pool = Array.from({ length: size }, (_, i) => i), selected = [];
+    for (let i = 0; i < count; i++) {
+      const index = this.integer(0, size - i - 1);
+      selected.push(pool[index]); pool[index] = pool[size - i - 1];
+    }
+    return selected;
   }
 }

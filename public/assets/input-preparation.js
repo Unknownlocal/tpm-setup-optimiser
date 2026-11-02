@@ -1,4 +1,5 @@
 import { parseConstants } from "./python-literals.js";
+import { setupModel, resolveSetupAxes } from "./setup-model.js";
 
 export const DEFINITION_FILES = ["config.json", "tyremodel.json", "parts.json", "car_parts.json",
   "car_concepts.json", "engines.json", "regulations.json", "options.json", "constants.py"];
@@ -70,24 +71,16 @@ function activePolicy(save, definitions, key) {
   return option;
 }
 
-function setupInputs(config, supplied) {
+function setupInputs(model, config, supplied) {
   const setup = object(config.car_setup, "config.json: car_setup");
-  const wings = object(setup.wing_levels, "Wing settings");
-  const pressures = object(setup.tyre_pressures, "Tyre pressure settings");
-  const suspension = object(setup.suspension_setup, "Suspension settings");
+  const axes = resolveSetupAxes(model, setup);
   const result = {};
-  for (const [key, min, max, step] of [
-    ["front_wing", wings.min_level, wings.max_level, 1], ["rear_wing", wings.min_level, wings.max_level, 1],
-    ["front_pressure_psi", pressures.front?.min_psi, pressures.front?.max_psi, pressures.front?.step_psi],
-    ["rear_pressure_psi", pressures.rear?.min_psi, pressures.rear?.max_psi, pressures.rear?.step_psi],
-    ["suspension_level", suspension.min_level, suspension.max_level, 1],
-  ]) {
-    number(min, `${key} minimum`); number(max, `${key} maximum`, min); number(step, `${key} step`, Number.MIN_VALUE);
+  for (const { key, min, max, step } of axes) {
     const value = number(supplied[key], key, min, max);
     requireValue(Math.abs((value - min) / step - Math.round((value - min) / step)) < 1e-7, `${key} does not match the configured step.`);
     result[key] = value;
   }
-  return { settings: result, definitions: setup };
+  return { settings: result, definitions: setup, axes };
 }
 
 function fittedItem(store, binding, label) {
@@ -168,7 +161,8 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
   const total = saveFile?.size + trackFile?.size + Object.values(files).reduce((sum, file) => sum + file.size, 0);
   requireValue(total <= 96 * 1024 * 1024, "Selected input files exceed 96 MiB.");
   const save = object(await readJson(saveFile, "Save", 64 * 1024 * 1024), "Save");
-  requireValue(save.schema_version === 3 && (save.game_mode || "formula") === "formula", "Only schema-version 3 Formula saves are currently supported.");
+  requireValue(save.schema_version === 3, "Only schema-version 3 saves are currently supported.");
+  const model = setupModel(save.game_mode || "formula");
   const teamName = text(save.player_team, "Player team");
   const team = object(object(save.teams, "Saved teams")[teamName], "Player team");
   const attributes = object(team.attr, "Saved car attributes");
@@ -186,7 +180,7 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
     }
   }
   const track = validateTrack(await readJson(trackFile, "Selected circuit"));
-  const selectedSetup = setupInputs(definitions.config, settings);
+  const selectedSetup = setupInputs(model, definitions.config, settings);
   const carPolicy = activePolicy(save, definitions.regulations, "car_profile");
   const tyrePolicy = activePolicy(save, definitions.regulations, "tyre_profile");
   // Match the game's profile normalisation, including older durability-delta definitions.
@@ -229,7 +223,7 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
     savedPack: text(save.data_pack, "Saved data pack"), track, drivers,
     weather: { temperature_c: number(weather.temperature_c, "Manual ambient temperature"),
       wetness_mm: number(weather.wetness_mm, "Water depth", 0, 5) },
-    settings: selectedSetup.settings, setupDefinitions: selectedSetup.definitions,
+    settings: selectedSetup.settings, setupDefinitions: selectedSetup.definitions, setupModel: model.id, setupAxes: selectedSetup.axes,
     teamInputs: pick(team, ["attr", "team_pace", "braking", "acceleration", "car_mass_kg", "tyre_management",
       "aero_efficiency_rating", "chassis_profile", "part_understanding_laps", "tyre_contract"]),
     tyreSupplier: { ...tyreSupplier, name: supplierName }, tyres,

@@ -75,14 +75,9 @@
       </div>
       <p id="compound-help" class="hint">S soft · M medium · H hard · I intermediate · W wet. Temperature is entered manually for this stage.</p>
       <details>
-        <summary>Fixed setup for lap prediction</summary>
-        <div class="input-grid">
-          <label>Front wing<input id="setup-front" type="number" value="20" step="1"></label>
-          <label>Rear wing<input id="setup-rear" type="number" value="14" step="1"></label>
-          <label>Front pressure (psi)<input id="setup-front-pressure" type="number" value="20.3" step="0.1"></label>
-          <label>Rear pressure (psi)<input id="setup-rear-pressure" type="number" value="21.7" step="0.1"></label>
-          <label>Suspension<input id="setup-suspension" type="number" value="2" step="1"></label>
-        </div>
+        <summary>Setup to grade or start from</summary>
+        <div id="setup-fields" class="input-grid"></div>
+        <p class="hint">Front pressure applies to both front tyres; rear pressure applies to both rear tyres.</p>
       </details>
       <details>
         <summary>Search limits</summary>
@@ -98,6 +93,7 @@
       </details>
       <button id="search-setups" type="button" disabled>Find setups</button>
       <button id="prepare-inputs" type="button" disabled>Grade setup</button>
+      <p class="hint">Find setups searches for better settings. Grade setup evaluates only the values you entered above.</p>
     </section>
     <section id="input-results" class="panel" aria-labelledby="input-result-title" hidden>
       <h2 id="input-result-title">Setups, grades and predicted laps</h2>

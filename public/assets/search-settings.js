@@ -1,10 +1,6 @@
 import { clamp, finite, requireValue } from "./lap-contract.js";
 
-export const SETTING_KEYS = ["front_wing", "rear_wing", "front_pressure_psi", "rear_pressure_psi", "suspension_level"];
-export const ticks = settings => SETTING_KEYS.map((key, i) => Math.round(settings[key] * (i === 2 || i === 3 ? 10 : 1)));
-export const settingsFromTicks = values => Object.fromEntries(SETTING_KEYS.map((key, i) => [key, values[i] / (i === 2 || i === 3 ? 10 : 1)]));
 export const settingKey = values => values.join(",");
-const COARSE_STEPS = [3, 3, 10, 10, 2];
 
 export function searchLimits(raw = {}) {
   const limits = { seconds: raw.seconds ?? 15, refine_laps: raw.refine_laps ?? 500, stall_laps: raw.stall_laps ?? 100, idle_batches: raw.idle_batches ?? 64 };
@@ -17,24 +13,17 @@ export function searchLimits(raw = {}) {
   return limits;
 }
 
-export function boundsFor(source) {
-  const cfg = source.setupDefinitions, w = cfg.wing_levels, p = cfg.tyre_pressures, s = cfg.suspension_setup;
-  requireValue(p.front.step_psi === .1 && p.rear.step_psi === .1, "Search currently requires 0.1 psi pressure steps.");
-  return [[w.min_level, w.max_level], [w.min_level, w.max_level], [Math.round(p.front.min_psi * 10), Math.round(p.front.max_psi * 10)],
-    [Math.round(p.rear.min_psi * 10), Math.round(p.rear.max_psi * 10)], [s.min_level, s.max_level]];
-}
-
 /** Same mix as the desktop search: neighbours, broad samples, guidance samples and paired moves. */
 export function candidatesFor(state, bounds, rng) {
-  const steps = state.round++ % 3 === 0 ? COARSE_STEPS : [1, 1, 1, 1, 1], values = [];
-  for (let axis = 0; axis < 5; axis++) for (const sign of [-1, 1]) {
+  const radii = state.space.coarse, steps = state.round++ % 3 === 0 ? radii : bounds.map(() => 1), values = [];
+  for (let axis = 0; axis < bounds.length; axis++) for (const sign of [-1, 1]) {
     const value = [...state.anchor]; value[axis] = clamp(value[axis] + sign * steps[axis], ...bounds[axis]); values.push(value);
   }
   for (let attempt = 0; attempt < 38; attempt++) {
     let value = [...state.anchor];
     if (attempt < 8) value = bounds.map(([low, high]) => rng.integer(low, high));
-    else if (attempt < 20) value = state.reference.map((v, axis) => rng.integer(Math.max(bounds[axis][0], v - COARSE_STEPS[axis]), Math.min(bounds[axis][1], v + COARSE_STEPS[axis])));
-    else for (const axis of rng.pair()) value[axis] = clamp(value[axis] + rng.choice([-1, 1]) * steps[axis], ...bounds[axis]);
+    else if (attempt < 20) value = state.reference.map((v, axis) => rng.integer(Math.max(bounds[axis][0], v - radii[axis]), Math.min(bounds[axis][1], v + radii[axis])));
+    else for (const axis of rng.sampleIndices(bounds.length, Math.min(2, bounds.length))) value[axis] = clamp(value[axis] + rng.choice([-1, 1]) * steps[axis], ...bounds[axis]);
     values.push(value);
   }
   return values;
@@ -42,7 +31,7 @@ export function candidatesFor(state, bounds, rng) {
 
 /** Charge only newly simulated component laps. Cached/pruned work has its own cutoff. */
 export function advanceSearch(state, found, laps, limits, generated = true) {
-  for (const row of found) if (row.score > state.best.score) { state.best = row; state.anchor = ticks(row.settings); }
+  for (const row of found) if (row.score > state.best.score) { state.best = row; state.anchor = state.space.toTicks(row.settings); }
   const refinement = state.refinement;
   if (refinement) {
     refinement.laps += laps; refinement.stale_laps += laps;
