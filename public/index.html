@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TPM · Local setup inputs</title>
+  <title>TPM · Setup optimiser</title>
   <link rel="icon" href="/favicon.ico">
   <link rel="stylesheet" href="/assets/style.css">
   <script type="module" src="/assets/app.js"></script>
@@ -11,9 +11,9 @@
 <body>
   <main>
     <header>
-      <p class="eyebrow">TPM SETUP OPTIMISER / PROOF OF CONCEPT</p>
+      <p class="eyebrow">TPM SETUP OPTIMISER</p>
       <h1>Your files. Your browser.</h1>
-      <p>Choose your local files and validate the inputs for a setup calculation in your browser.</p>
+      <p>Choose your local game files and find setups for your drivers.</p>
       <p class="privacy">Read-only access · No uploads · No saved selections</p>
     </header>
     <section class="panel" aria-labelledby="selection-title">
@@ -23,7 +23,7 @@
         <span id="root-name">No game folder selected</span>
       </div>
       <p class="hint">Folder pickers may refuse protected installation folders, including Program Files.
-        This POC respects those access restrictions.</p>
+        Drop the folder below if the browser refuses access.</p>
       <div class="drop-targets">
         <div id="drop-root" class="drop-zone" role="group" aria-label="Drop game folder" aria-disabled="true">
           <strong>Drop game folder here</strong>
@@ -127,7 +127,7 @@
     <footer>Selected saves, circuits and calculation definitions are parsed locally in a browser worker.
       Python constants are read as literal data. File contents are never executed or sent to a server.
       Local diagnostic JSON is printed in the browser console for copying.</footer>
-    <noscript>This POC needs JavaScript to inspect files in your browser.</noscript>
+    <noscript>JavaScript is needed to read local files and calculate setups in your browser.</noscript>
   </main>
 </body>
 </html>

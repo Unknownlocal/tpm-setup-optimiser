@@ -83,7 +83,7 @@ worker.onmessage = async ({ data }) => {
     ready = true;
     ui.status.textContent = supported ? "Ready. Choose or drop your game folder to begin." : dropSupported
       ? "Ready. Drop your game folder or a mod folder to begin."
-      : "This browser does not support local folder access for this POC.";
+      : "This browser does not support local folder selection or folder drops.";
     controls();
     ui["engine-note"].textContent = "Lap engine loaded and self-test passed. Fixed-setup lap preview is ready.";
     write_log("ready", { folder_picker: supported, folder_drop: dropSupported, lap_engine: data.lap_engine, search_workers: search.size });
@@ -179,7 +179,7 @@ ui["browser-note"].textContent = dropSupported
   ? "The folder picker is unavailable in this browser. Drag a folder from your file manager into one of the marked areas."
   : "This browser does not provide folder picking or folder entries from drag-and-drop.";
 
-// Prevent a dropped file outside the targets from navigating away from the POC.
+// Prevent a dropped file outside the targets from navigating away from the page.
 for (const type of ["dragover", "drop"]) document.addEventListener(type, event => {
   if ([...event.dataTransfer.types].includes("Files")) event.preventDefault();
 });

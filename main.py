@@ -1,4 +1,4 @@
-"""Serve fixed POC assets; local file selection and processing stay in the browser."""
+"""Serve fixed application assets; local file processing stays in the browser."""
 import json
 from pathlib import Path
 
