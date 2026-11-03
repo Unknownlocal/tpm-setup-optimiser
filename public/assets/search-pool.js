@@ -3,7 +3,7 @@ import { searchLimits } from "./search-settings.js";
 /** Preload a bounded worker pool before file access. Each driver owns independent search state;
  * teams larger than the pool share slots in round-robin slices under one deadline. */
 export function createSearchPool(count = Math.max(1, Math.min(2, navigator.hardwareConcurrency || 2))) {
-  let active = null, sequence = 0;
+  let active = null, inputJob = null, sequence = 0;
   const slots = Array.from({ length: count }, () => {
     const worker = new Worker("/assets/search-worker.js", { type: "module" }), slot = { worker, dead: false };
     slot.ready = new Promise((resolve, reject) => {
@@ -11,21 +11,43 @@ export function createSearchPool(count = Math.max(1, Math.min(2, navigator.hardw
       worker.onmessage = ({ data }) => {
         if (data.type === "ready") { clearTimeout(timer); resolve(data.lap_engine); return; }
         if (data.type === "unavailable") { clearTimeout(timer); slot.dead = true; worker.terminate(); reject(new Error(data.message)); return; }
+        if (inputJob?.id === data.id) {
+          if (data.type === "inputs") inputJob.finish(null, data.result);
+          else if (data.type === "failed") inputJob.finish(new Error(data.message));
+          return;
+        }
         if (active?.id === data.id) active.message(slot, data);
       };
       worker.onerror = event => {
         event.preventDefault(); clearTimeout(timer); slot.dead = true;
         reject(new Error("A search worker could not load. Reload the page to retry."));
+        inputJob?.finish(new Error("An input worker failed. Reload the page to retry."));
         if (active) active.fail("A search worker failed. Reload the page before another search.", slot);
       };
     });
     return slot;
   });
   function cancel() { if (!active) return false; active.stop("cancelled"); return true; }
+  async function prepareInputs(payload, signal) {
+    await ready; signal.throwIfAborted();
+    if (slots.some(slot => slot.dead)) throw new Error("A calculation worker is unavailable. Reload the page to retry.");
+    if (active || inputJob) throw new Error("Calculations are already running.");
+    // Reuse a preloaded runtime; the metadata worker stays independent of .NET.
+    return new Promise((resolve, reject) => {
+      const id = ++sequence;
+      const abort = () => { slots[0].worker.postMessage({ id, type: "stop" }); inputJob.finish(signal.reason); };
+      inputJob = { id, finish(error, result) {
+        signal.removeEventListener("abort", abort); inputJob = null;
+        if (error) reject(error); else resolve(result);
+      } };
+      signal.addEventListener("abort", abort, { once: true });
+      slots[0].worker.postMessage({ id, type: "inputs", payload });
+    });
+  }
   async function run(result, payload, signal, onProgress = () => {}, mode = "search") {
     await ready; signal.throwIfAborted();
     if (slots.some(slot => slot.dead)) throw new Error("A search worker is unavailable. Reload the page to retry.");
-    if (active) throw new Error("A setup search is already running.");
+    if (active || inputJob) throw new Error("Calculations are already running.");
     const limits = mode === "search" ? searchLimits(payload.search) : null, source = result.source;
     const used = slots.slice(0, Math.min(slots.length, source.drivers.length));
     const started = performance.now(), latest = new Map(), prepared = new Set(), stopped = new Set();
@@ -99,5 +121,5 @@ export function createSearchPool(count = Math.max(1, Math.min(2, navigator.hardw
   }
   const ready = Promise.all(slots.map(slot => slot.ready));
   ready.catch(() => {}); // The page reports loading failures when its metadata worker is also ready.
-  return { ready, run, grade: (result, payload, signal, progress) => run(result, payload, signal, progress, "grade"), cancel, size: slots.length };
+  return { ready, prepareInputs, run, grade: (result, payload, signal, progress) => run(result, payload, signal, progress, "grade"), cancel, size: slots.length };
 }

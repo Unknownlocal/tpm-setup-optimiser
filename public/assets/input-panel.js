@@ -188,7 +188,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       weather: { temperature_c: ui.ambient.value.trim() || ui.ambient.validity.badInput ? numeric("ambient") : null, wetness_mm: numeric("water") }, compounds: ui["input-compounds"].value,
       settings: Object.fromEntries(setupAxes.map(axis => [axis.key, numeric(axis.control)])),
       search: { seconds: numeric("search-seconds"), refine_laps: numeric("search-refine"), stall_laps: numeric("search-stall"), idle_batches: numeric("search-idle") } };
-    const prepared = await request("prepare-inputs", payload, signal);
+    const prepared = await search.prepareInputs(payload, signal);
     signal.throwIfAborted();
     const validation = write_input_logs(prepared, { save: save.name, mod: ui["input-mod"].textContent, calendar: calendarDefault });
     let lastLog = -Infinity;

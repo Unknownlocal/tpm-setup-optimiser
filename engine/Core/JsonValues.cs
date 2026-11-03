@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace Tpm.Setup.Core;
 
-/// <summary>Read the small saved-car projection without reflection or file access.</summary>
+/// <summary>Read local simulation projections without reflection or file access.</summary>
 internal static class JsonValues
 {
     public static JsonElement At(JsonElement value, string key) =>

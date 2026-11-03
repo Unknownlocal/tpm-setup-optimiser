@@ -1,5 +1,5 @@
 import { rankMods } from "./mod-resolver.js";
-import { prepareInputs, trackOptions } from "./input-preparation.js";
+import { trackOptions } from "./input-preparation.js";
 import { resolveDefaultCircuit } from "./event-resolution.js";
 
 self.onmessage = async ({ data: { id, type, payload } }) => {
@@ -7,8 +7,6 @@ self.onmessage = async ({ data: { id, type, payload } }) => {
     let result;
     if (type === "default-circuit") {
       result = await resolveDefaultCircuit(payload);
-    } else if (type === "prepare-inputs") {
-      result = await prepareInputs(payload);
     } else if (type === "track-options") {
       result = await trackOptions(payload);
     } else if (type === "rank") {

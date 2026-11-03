@@ -17,16 +17,19 @@ export async function createSavedCars(source) {
     const attrs = Object.fromEntries([...ZONES, "team_pace", "acceleration", "braking", "car_mass_kg", "aero_efficiency_rating"].map((key, i) => [key, values[i]]));
     attrs.tyre_management = values[13];
     return [driver.name, { attrs, aero: values[8], power: values[9], engineMass: values[10], wetBonus: values[11], protectedTemperature: values[12] === 1,
-      setups(settings) {
+      setups(settings, tyreModel = null) {
         const output = [];
         for (let start = 0; start < settings.length; start += 64) {
           const batch = settings.slice(start, start + 64);
-          const raw = Array.from(engine.EvaluateSetups(model, batch.flatMap(s => [s.front_wing, s.rear_wing, s.front_pressure_psi, s.rear_pressure_psi, s.suspension_level])));
-          requireValue(raw.length === batch.length * 8 && raw.every(Number.isFinite), "Invalid setup engine response.");
+          const inputs = batch.flatMap(s => [s.front_wing, s.rear_wing, s.front_pressure_psi, s.rear_pressure_psi, s.suspension_level]);
+          const raw = Array.from(tyreModel ? engine.EvaluateSetupTyres(model, tyreModel, inputs, values[12] === 1) : engine.EvaluateSetups(model, inputs));
+          const width = tyreModel ? 11 : 8;
+          requireValue(raw.length === batch.length * width && raw.every(Number.isFinite), "Invalid setup engine response.");
           for (let i = 0; i < batch.length; i++) {
-            const row = raw.slice(i * 8, (i + 1) * 8);
+            const row = raw.slice(i * width, (i + 1) * width);
             output.push({ delta: Object.fromEntries(ZONES.map((key, j) => [key, row[j]])),
-              pressure: { accel_ms2: row[4], target_temp_delta_c: row[5] }, balance: row[6], traction: row[7] });
+              pressure: { accel_ms2: row[4], target_temp_delta_c: row[5] }, balance: row[6], traction: row[7],
+              ...(tyreModel ? { grip: { temperature_c: row[8], lateral: row[9], longitudinal: row[10] } } : {}) });
           }
         }
         return output;

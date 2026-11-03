@@ -1,8 +1,6 @@
-import { finite, clamp, requireValue } from "./lap-contract.js";
-import { PythonRandom } from "./python-random.js";
-import { initialWind } from "./session-wind.js";
+import { finite, requireValue } from "./lap-contract.js";
+import { createConditions } from "./session-conditions.js";
 import { createSavedCars } from "./saved-car.js";
-import { tyreGrip } from "./tyre-grip.js";
 import { simulateLaps } from "./lap-physics.js";
 
 /** Share fixed equipment and weather between candidate and reference laps.
@@ -19,20 +17,13 @@ export async function createLapScenario(source, payload, signal) {
   source.trackId = payload.trackId ?? payload.trackFile.name.replace(/\.json$/iu, "");
   requireValue(typeof source.trackId === "string" && source.trackId.length > 0, "A circuit identifier is required for the session seed.");
   source.testing = payload.testing === true;
-  const wind = await initialWind(source, seed);
+  const { wind, variations, tyres } = await createConditions(source, seed);
   signal?.throwIfAborted();
-  const constants = source.definitions.constants;
-  const level = clamp(Math.trunc(source.sessionOptions.variability_level ?? 1), constants.WEEKEND_CORNERING_VARIABILITY_LEVEL_MIN ?? 1, constants.WEEKEND_CORNERING_VARIABILITY_LEVEL_MAX ?? 10);
-  const span = level * (constants.WEEKEND_CORNERING_VARIABILITY_KMH_PER_LEVEL ?? .25), rng = new PythonRandom(seed + 977);
-  const variations = new Map([...source.drivers].sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0).map(driver => [driver.name, rng.uniform(-span, span)]));
-  const staff = source.dynamicsStaff[0];
-  const morale = clamp(50 + (staff?.morale_effects || []).reduce((sum, effect) => sum + (effect.amount || 0), 0), 0, 100);
-  const skill = clamp(Math.trunc((staff?.skills?.tire_temp ?? staff?.skill ?? 1) + (morale - 50) / 50 * 2 + .5), 1, 20);
   const cars = await createSavedCars(source);
   signal?.throwIfAborted();
   function row(driver, compound, settings = source.settings) {
-    const car = cars.get(driver.name), setup = car.setups([settings])[0];
-    const grip = tyreGrip(source, compound, setup.pressure, skill, car.protectedTemperature), attrs = car.attrs;
+    const car = cars.get(driver.name), setup = car.setups([settings], tyres.get(compound.name))[0];
+    const grip = setup.grip, attrs = car.attrs;
     // Setup effects are speeds in km/h; the physics boundary takes rating points.
     const input = {
       slow_rating_points: attrs.slow + setup.delta.slow / .084375,

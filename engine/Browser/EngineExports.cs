@@ -3,7 +3,7 @@ using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using Tpm.Setup.Core;
 
-/// <summary>Project saved equipment once, then pass numerical batches without retaining browser state.</summary>
+/// <summary>Accept local simulation projections and numerical batches without retaining browser state.</summary>
 [SupportedOSPlatform("browser")]
 public static partial class EngineExports
 {
@@ -20,6 +20,21 @@ public static partial class EngineExports
 
     [JSExport]
     public static double[] EvaluateSetups(double[] model, double[] settings) => FormulaSetup.Evaluate(model, settings);
+
+    [JSExport]
+    public static int ConditionsContractVersion() => 1;
+
+    [JSExport]
+    public static double[] ResolveTemperature(string json, double seed) => SessionTemperature.Resolve(json, seed);
+
+    [JSExport]
+    public static double[] BuildConditions(string json, double seed) => SessionConditions.Build(json, seed);
+
+    [JSExport]
+    public static double[] EvaluateSetupTyres(double[] model, double[] tyres, double[] settings, bool protectedTemperature) => TyreGrip.Setups(model, tyres, settings, protectedTemperature);
+
+    [JSExport]
+    public static double[] RandomWords(string seed, double[] state) => GameRandom.Words(seed, state);
 
     [JSExport]
     public static double[] Evaluate(double[] packet)

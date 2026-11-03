@@ -1,6 +1,8 @@
 import { lapEngineReadiness } from "./lap-physics.js";
 import { prepareDriver, stepDriver, driverSnapshot } from "./driver-search.js";
 import { gradeDriver } from "./setup-grading.js";
+import { prepareInputs } from "./input-preparation.js";
+import { resolveTemperature } from "./session-conditions.js";
 
 let active = null;
 const yieldTask = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -16,10 +18,17 @@ self.onmessage = async ({ data }) => {
     }
     return;
   }
-  if (data.type === "prepare" || data.type === "grade") {
+  if (["inputs", "prepare", "grade"].includes(data.type)) {
     active?.controller.abort();
     const job = { id: data.id, controller: new AbortController(), drivers: [] }; active = job;
     try {
+      if (data.type === "inputs") {
+        const result = await prepareInputs(data.payload);
+        job.controller.signal.throwIfAborted();
+        result.source.weather = await resolveTemperature(result.source, data.payload.seed);
+        job.controller.signal.throwIfAborted();
+        send(job, "inputs", { result }); if (active === job) active = null; return;
+      }
       for (const name of data.names) {
         if (data.type === "grade") {
           const snapshot = await gradeDriver(data.source, data.payload, name, job.controller.signal,

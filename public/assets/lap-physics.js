@@ -12,6 +12,7 @@ export async function loadEngine() {
     const exports = (await runtime.getAssemblyExports(runtime.getConfig().mainAssemblyName)).EngineExports;
     if (exports.ContractVersion() !== ENGINE_VERSION) throw new Error("Incompatible lap-engine version. Reload the page.");
     if (exports.CarContractVersion() !== 1) throw new Error("Incompatible car-engine version. Reload the page.");
+    if (exports.ConditionsContractVersion() !== 1) throw new Error("Incompatible conditions-engine version. Reload the page.");
     return exports;
   })();
   return engine;

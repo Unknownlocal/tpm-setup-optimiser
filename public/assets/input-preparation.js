@@ -1,6 +1,5 @@
 import { parseConstants } from "./python-literals.js";
 import { setupModel, resolveSetupAxes } from "./setup-model.js";
-import { resolveTemperature } from "./session-temperature.js";
 
 export const DEFINITION_FILES = ["config.json", "tyremodel.json", "parts.json", "car_parts.json",
   "car_concepts.json", "engines.json", "regulations.json", "options.json", "constants.py"];
@@ -157,7 +156,7 @@ function driverInputs(save, team, definitions) {
 }
 
 /** Read local source data. Keep unrelated save and options fields out of the result. */
-export async function prepareInputs({ saveFile, trackFile, files, weather, settings, compounds, seed }) {
+export async function prepareInputs({ saveFile, trackFile, files, weather, settings, compounds }) {
   object(files, "Definition files");
   const total = saveFile?.size + trackFile?.size + Object.values(files).reduce((sum, file) => sum + file.size, 0);
   requireValue(total <= 96 * 1024 * 1024, "Selected input files exceed 96 MiB.");
@@ -237,7 +236,6 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
   };
   const engineNames = [team.engine, team.engine_supplier, team.engine_contract?.supplier, team.engine_contract?.engine].filter(value => typeof value === "string");
   source.teamInputs.engineSignatures = [...engineNames, ...engineNames.map(name => definitions.engines.suppliers?.[name]?.engine).filter(value => typeof value === "string")];
-  source.weather = resolveTemperature(source, seed);
   // JSON accepts overlarge exponents as Infinity; reject unusable numeric inputs.
   function finiteTree(value, depth = 0) {
     requireValue(depth <= 64, "Input definitions are nested too deeply.");

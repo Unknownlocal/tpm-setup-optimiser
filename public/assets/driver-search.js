@@ -2,7 +2,7 @@ import { createLapScenario } from "./lap-scenario.js";
 import { solveReference } from "./setup-reference.js";
 import { CompoundScorer } from "./compound-scorer.js";
 import { AverageScorer } from "./average-scorer.js";
-import { PythonRandom } from "./python-random.js";
+import { createSearchRandom } from "./search-random.js";
 import { searchLimits, candidatesFor, advanceSearch } from "./search-settings.js";
 import { createSettingSpace } from "./setup-model.js";
 
@@ -32,7 +32,7 @@ export async function prepareDriver(source, payload, name, signal, onReference =
   }
   for (const state of cases) advanceSearch(state, [], 0, limits, false);
   stats.preparation_laps = stats.evaluated; stats.evaluated = 0;
-  return { driver, cases, space, stats, bounds, limits, rng: new PythonRandom(payload.seed), wind: scenario.wind, cursor: 0 };
+  return { driver, cases, space, stats, bounds, limits, rng: await createSearchRandom(payload.seed), wind: scenario.wind, cursor: 0 };
 }
 
 export async function stepDriver(driver, signal) {
