@@ -66,7 +66,6 @@ function request(type, payload, signal) {
     const id = ++nextId;
     const abort = () => {
       requests.delete(id);
-      if (["simulate-laps", "predict-laps", "grade-setups"].includes(type)) worker.postMessage({ id, type: "cancel" });
       write_log("worker_cancelled", { id, operation: type }); reject(signal.reason);
     };
     signal.addEventListener("abort", abort, { once: true });
@@ -78,15 +77,20 @@ function request(type, payload, signal) {
 
 worker.onmessage = async ({ data }) => {
   if (data.ready) {
-    try { await search.ready; }
-    catch { worker.onerror({ preventDefault() {} }); return; }
+    let engines;
+    try { engines = await search.ready; }
+    catch (error) {
+      ui.status.textContent = "The .NET calculation engine could not load. Reload the page to retry.";
+      ui["engine-note"].textContent = error.message;
+      write_log("engine_unavailable", { message: error.message }); controls(); return;
+    }
     ready = true;
     ui.status.textContent = supported ? "Ready. Choose or drop your game folder to begin." : dropSupported
       ? "Ready. Drop your game folder or a mod folder to begin."
       : "This browser does not support local folder selection or folder drops.";
     controls();
-    ui["engine-note"].textContent = "Lap engine loaded and self-test passed. Fixed-setup lap preview is ready.";
-    write_log("ready", { folder_picker: supported, folder_drop: dropSupported, lap_engine: data.lap_engine, search_workers: search.size });
+    ui["engine-note"].textContent = ".NET 10 lap engine loaded and self-test passed. Grading and search are ready.";
+    write_log("ready", { folder_picker: supported, folder_drop: dropSupported, lap_engine: engines[0], search_workers: search.size });
     return;
   }
   const pending = requests.get(data.id);
@@ -245,7 +249,7 @@ ui["mod-query"].oninput = () => {
   controls();
 };
 ui.cancel.onclick = () => {
-  if (search.cancel()) { ui.status.textContent = "Stopping search; keeping complete best results…"; write_log("search_stop_requested"); return; }
+  if (search.cancel()) { ui.status.textContent = "Stopping calculations; keeping completed results…"; write_log("search_stop_requested"); return; }
   invalidate(); ui.status.textContent = "Operation cancelled."; write_log("cancelled");
 };
 ui.clear.onclick = () => {

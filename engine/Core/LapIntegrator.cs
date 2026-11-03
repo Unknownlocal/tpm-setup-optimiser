@@ -1,37 +1,12 @@
 using System;
-using System.Runtime.InteropServices.JavaScript;
-using System.Runtime.Versioning;
 
-// Independent port of lap-motion.js. Preserve operation order for numerical comparison.
-[SupportedOSPlatform("browser")]
-public static partial class Kernel
+namespace Tpm.Setup.Core;
+
+/// <summary>Closed flying lap in metres, seconds and m/s, using one-metre steps.</summary>
+public static class LapIntegrator
 {
     static readonly double[] Speeds = [0, 50, 100, 150, 200, 250, 300, 330, 350];
     static readonly double[] Rates = [1.75, 1.6, 1.45, 1.25, .95, .75, .4, .2, .05];
-    static double[][] Records = [];
-    public static void Main() { }
-
-    [JSExport]
-    public static void Load(double[] packet)
-    {
-        Records = new double[(int)packet[0]][];
-        int offset = 1;
-        for (int i = 0; i < Records.Length; i++)
-        {
-            int size = 4 + 4 * (int)packet[offset];
-            Records[i] = packet.AsSpan(offset, size).ToArray();
-            offset += size;
-        }
-    }
-
-    [JSExport]
-    public static double[] Solve(int repeats)
-    {
-        var times = new double[Records.Length];
-        for (int pass = 0; pass < repeats; pass++)
-            for (int i = 0; i < times.Length; i++) times[i] = Lap(Records[i]);
-        return times;
-    }
 
     static double Curve(double speed)
     {
@@ -48,12 +23,17 @@ public static partial class Kernel
         return Math.Max(.05, propulsion * Curve(speed * 3.6) - drag * air * air);
     }
 
-    static double Lap(double[] data)
+    public static double Integrate(ReadOnlySpan<double> distances, ReadOnlySpan<double> caps, ReadOnlySpan<double> brakes, ReadOnlySpan<double> tails, double propulsion, double drag, bool windy)
     {
-        int n = (int)data[0], start = 0;
-        double propulsion = data[1], drag = data[2];
-        var distances = data.AsSpan(4, n); var caps = data.AsSpan(4 + n, n);
-        var brakes = data.AsSpan(4 + 2 * n, n); var tails = data.AsSpan(4 + 3 * n, n);
+        int n = caps.Length, start = 0;
+        if (n == 0 || distances.Length != n || brakes.Length != n || tails.Length != n)
+            throw new ArgumentException("Lap sector arrays must have equal nonzero lengths.");
+        if (!double.IsFinite(propulsion) || propulsion <= 0 || !double.IsFinite(drag) || drag < 0)
+            throw new ArgumentException("Invalid propulsion or drag.");
+        for (int i = 0; i < n; i++)
+            if (!double.IsFinite(distances[i]) || distances[i] <= 0 || !double.IsFinite(caps[i]) || caps[i] < .5
+                || !double.IsFinite(brakes[i]) || brakes[i] <= 0 || !double.IsFinite(tails[i]))
+                throw new ArgumentException("Invalid lap sector values.");
         for (int i = 1; i < n; i++) if (caps[i] < caps[start]) start = i;
         var nodes = new double[n + 1]; Array.Fill(nodes, caps[start]);
         for (int iteration = 0; iteration < 12; iteration++)
@@ -103,7 +83,7 @@ public static partial class Kernel
                 duration += step / Math.Max(.1, .5 * (speed + next));
                 travelled += step; speed = Math.Max(.5, next);
             }
-            lap += data[3] != 0 ? duration : Math.Max(.001, duration);
+            lap += windy ? duration : Math.Max(.001, duration);
         }
         return Math.Max(.001, lap);
     }

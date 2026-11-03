@@ -1,5 +1,6 @@
 import { lapEngineReadiness } from "./lap-physics.js";
 import { prepareDriver, stepDriver, driverSnapshot } from "./driver-search.js";
+import { gradeDriver } from "./setup-grading.js";
 
 let active = null;
 const yieldTask = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -15,16 +16,23 @@ self.onmessage = async ({ data }) => {
     }
     return;
   }
-  if (data.type === "prepare") {
+  if (data.type === "prepare" || data.type === "grade") {
     active?.controller.abort();
     const job = { id: data.id, controller: new AbortController(), drivers: [] }; active = job;
     try {
       for (const name of data.names) {
+        if (data.type === "grade") {
+          const snapshot = await gradeDriver(data.source, data.payload, name, job.controller.signal,
+            detail => send(job, "reference", detail));
+          send(job, "checkpoint", { snapshot }); continue;
+        }
         const driver = await prepareDriver(data.source, data.payload, name, job.controller.signal,
           detail => send(job, "reference", detail));
         job.drivers.push(driver); send(job, "checkpoint", { snapshot: driverSnapshot(driver) });
       }
-      job.controller.signal.throwIfAborted(); job.stage = "prepared"; send(job, "prepared");
+      job.controller.signal.throwIfAborted();
+      if (data.type === "grade") { send(job, "stopped", { reason: "finished" }); if (active === job) active = null; }
+      else { job.stage = "prepared"; send(job, "prepared"); }
     } catch (error) {
       send(job, error.name === "AbortError" ? "stopped" : "failed", { message: error.message });
       if (active === job) active = null;
@@ -52,4 +60,5 @@ self.onmessage = async ({ data }) => {
   send(job, "stopped", { reason: now() >= data.deadline ? "deadline" : "finished" }); if (active === job) active = null;
 };
 
-self.postMessage({ type: "ready", lap_engine: await lapEngineReadiness() });
+try { self.postMessage({ type: "ready", lap_engine: await lapEngineReadiness() }); }
+catch (error) { self.postMessage({ type: "unavailable", message: error.message }); }

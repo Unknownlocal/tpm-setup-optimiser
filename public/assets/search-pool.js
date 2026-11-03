@@ -2,17 +2,19 @@ import { searchLimits } from "./search-settings.js";
 
 /** Preload a bounded worker pool before file access. Each driver owns independent search state;
  * teams larger than the pool share slots in round-robin slices under one deadline. */
-export function createSearchPool(count = Math.max(1, Math.min(4, navigator.hardwareConcurrency || 2))) {
+export function createSearchPool(count = Math.max(1, Math.min(2, navigator.hardwareConcurrency || 2))) {
   let active = null, sequence = 0;
   const slots = Array.from({ length: count }, () => {
     const worker = new Worker("/assets/search-worker.js", { type: "module" }), slot = { worker, dead: false };
     slot.ready = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { slot.dead = true; worker.terminate(); reject(new Error("The .NET engine took too long to load. Reload the page to retry.")); }, 60000);
       worker.onmessage = ({ data }) => {
-        if (data.type === "ready") { resolve(); return; }
+        if (data.type === "ready") { clearTimeout(timer); resolve(data.lap_engine); return; }
+        if (data.type === "unavailable") { clearTimeout(timer); slot.dead = true; worker.terminate(); reject(new Error(data.message)); return; }
         if (active?.id === data.id) active.message(slot, data);
       };
       worker.onerror = event => {
-        event.preventDefault(); slot.dead = true;
+        event.preventDefault(); clearTimeout(timer); slot.dead = true;
         reject(new Error("A search worker could not load. Reload the page to retry."));
         if (active) active.fail("A search worker failed. Reload the page before another search.", slot);
       };
@@ -20,11 +22,11 @@ export function createSearchPool(count = Math.max(1, Math.min(4, navigator.hardw
     return slot;
   });
   function cancel() { if (!active) return false; active.stop("cancelled"); return true; }
-  async function run(result, payload, signal, onProgress = () => {}) {
+  async function run(result, payload, signal, onProgress = () => {}, mode = "search") {
     await ready; signal.throwIfAborted();
     if (slots.some(slot => slot.dead)) throw new Error("A search worker is unavailable. Reload the page to retry.");
     if (active) throw new Error("A setup search is already running.");
-    const limits = searchLimits(payload.search), source = result.source;
+    const limits = mode === "search" ? searchLimits(payload.search) : null, source = result.source;
     const used = slots.slice(0, Math.min(slots.length, source.drivers.length));
     const started = performance.now(), latest = new Map(), prepared = new Set(), stopped = new Set();
     const id = ++sequence; let deadlineTimer, forcedTimer, searchStarted = null, reason = null, error = null, reachedDeadline = false;
@@ -35,9 +37,10 @@ export function createSearchPool(count = Math.max(1, Math.min(4, navigator.hardw
         for (const driver of drivers) for (const [key, value] of Object.entries(driver.statistics)) sums[key] = (sums[key] || 0) + value;
         return { ...result, prediction: { seed: payload.seed, wind: drivers[0]?.wind || { speed_kmh: 0, direction_deg: 0 }, rows: rows.filter(row => row.compound !== "avg_dry"), timing_ms: {} },
           grading: { rows, reference_laps_evaluated: sums.reference_laps || 0, timing_ms: { references: (searchStarted ?? performance.now()) - started, end_to_end: performance.now() - started } },
-          search: { status: reason || (searchStarted === null ? "preparing" : "searching"), message: error, limits,
+          ...(mode === "search" ? { search: { status: reason || (searchStarted === null ? "preparing" : "searching"), message: error, limits,
             drivers_ready: drivers.length, drivers_total: source.drivers.length, statistics: sums,
-            elapsed_search_ms: searchStarted === null ? 0 : performance.now() - searchStarted, workers: used.length } };
+            elapsed_search_ms: searchStarted === null ? 0 : performance.now() - searchStarted, workers: used.length } }
+            : { grading_status: reason || "grading", grading_message: error }) };
       }
       function cleanup() {
         clearTimeout(deadlineTimer); clearTimeout(forcedTimer); signal.removeEventListener("abort", abort);
@@ -89,12 +92,12 @@ export function createSearchPool(count = Math.max(1, Math.min(4, navigator.hardw
           }
         } };
       signal.addEventListener("abort", abort, { once: true });
-      for (const [index, slot] of used.entries()) slot.worker.postMessage({ id, type: "prepare", source,
+      for (const [index, slot] of used.entries()) slot.worker.postMessage({ id, type: mode === "search" ? "prepare" : "grade", source,
         payload: { seed: payload.seed, testing: payload.testing, trackId: payload.trackId ?? payload.trackFile.name.replace(/\.json$/iu, ""), search: limits },
         names: source.drivers.filter((_, driverIndex) => driverIndex % used.length === index).map(driver => driver.name) });
     });
   }
   const ready = Promise.all(slots.map(slot => slot.ready));
   ready.catch(() => {}); // The page reports loading failures when its metadata worker is also ready.
-  return { ready, run, cancel, size: slots.length };
+  return { ready, run, grade: (result, payload, signal, progress) => run(result, payload, signal, progress, "grade"), cancel, size: slots.length };
 }

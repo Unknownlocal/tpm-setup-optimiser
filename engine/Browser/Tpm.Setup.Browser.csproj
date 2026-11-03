@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.WebAssembly">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <!-- Keep the runtime paired with the notices shipped in notices/dotnet. -->
+    <!-- Paired with the unchanged runtime notices in notices/dotnet. -->
     <RuntimeFrameworkVersion>10.0.14</RuntimeFrameworkVersion>
     <OutputType>Exe</OutputType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -9,4 +9,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <WasmSingleFileBundle>false</WasmSingleFileBundle>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Core/Tpm.Setup.Core.csproj" />
+  </ItemGroup>
 </Project>

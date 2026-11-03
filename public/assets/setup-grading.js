@@ -1,5 +1,5 @@
 import { finite } from "./lap-contract.js";
-import { prepareLapScenario } from "./save-laps.js";
+import { createLapScenario } from "./lap-scenario.js";
 import { solveReference } from "./setup-reference.js";
 
 const ANCHORS = [[0, 100], [.02, 98], [.05, 95], [.1, 90], [.2, 82], [.35, 73], [.55, 64], [.8, 52], [1.1, 38], [1.5, 24], [2, 0]];
@@ -26,28 +26,27 @@ export function assessSetup(row, driver, reference) {
 }
 
 /** Grade the entered setup only. Reference solving is required preparation, not setup search. */
-export async function gradeSetups(payload, signal) {
-  const start = performance.now(), { result, scenario } = await prepareLapScenario(payload, signal);
-  const rows = result.source.drivers.flatMap(driver => result.source.tyres.map(compound => scenario.row(driver, compound)));
-  const predictionTiming = await scenario.laps(rows, signal), referenceStart = performance.now(), graded = [];
+export async function gradeDriver(source, payload, name, signal, onReference = () => {}) {
+  const scenario = await createLapScenario(source, payload, signal), driver = source.drivers.find(driver => driver.name === name);
+  if (!driver) throw new Error("The grading entry is missing from the prepared save.");
+  const rows = source.tyres.map(compound => scenario.row(driver, compound));
+  await scenario.laps(rows, signal);
+  const graded = [], components = [];
   let evaluated = 0;
-  for (const driver of result.source.drivers) {
-    const components = [];
-    for (const compound of result.source.tyres) {
-      const reference = await solveReference(scenario, driver, compound, signal);
-      evaluated += reference.evaluated;
-      const row = rows.find(row => row.driver === driver.name && row.compound === compound.name);
-      components.push(assessSetup(row, driver, reference));
-    }
-    const dry = ["soft", "medium", "hard"].map(name => components.find(row => row.compound === name));
-    if (dry.every(Boolean)) {
-      const score = dry.reduce((sum, row) => sum + row.score, 0) / 3;
-      graded.push({ driver: driver.name, entry: driver.entry, compound: "avg_dry", score, grade: gradeFromScore(score),
-        compound_scores: Object.fromEntries(dry.map(row => [row.compound, row.score])),
-        compound_lap_times_s: Object.fromEntries(dry.map(row => [row.compound, row.lap_time_s])) });
-    }
-    graded.push(...components);
+  for (const compound of source.tyres) {
+    onReference({ driver: name, compound: compound.name });
+    const reference = await solveReference(scenario, driver, compound, signal);
+    evaluated += reference.evaluated;
+    const row = rows.find(row => row.driver === driver.name && row.compound === compound.name);
+    components.push(assessSetup(row, driver, reference));
   }
-  return { ...result, prediction: { seed: scenario.seed, wind: scenario.wind, rows, timing_ms: predictionTiming },
-    grading: { rows: graded, reference_laps_evaluated: evaluated, timing_ms: { references: performance.now() - referenceStart, end_to_end: performance.now() - start } } };
+  const dry = ["soft", "medium", "hard"].map(name => components.find(row => row.compound === name));
+  if (dry.every(Boolean)) {
+    const score = dry.reduce((sum, row) => sum + row.score, 0) / 3;
+    graded.push({ driver: driver.name, entry: driver.entry, compound: "avg_dry", score, grade: gradeFromScore(score),
+      compound_scores: Object.fromEntries(dry.map(row => [row.compound, row.score])),
+      compound_lap_times_s: Object.fromEntries(dry.map(row => [row.compound, row.lap_time_s])) });
+  }
+  graded.push(...components);
+  return { driver: name, entry: driver.entry, wind: scenario.wind, rows: graded, statistics: { reference_laps: evaluated } };
 }

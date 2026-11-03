@@ -14,5 +14,8 @@ venv.bak/
 
 # Generated engine artefacts.
 build/
-engine/bin/
-engine/obj/
+engine/**/bin/
+engine/**/obj/
+tests/**/bin/
+tests/**/obj/
+public/engine/

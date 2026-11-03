@@ -188,28 +188,27 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       weather: { temperature_c: ui.ambient.value.trim() || ui.ambient.validity.badInput ? numeric("ambient") : null, wetness_mm: numeric("water") }, compounds: ui["input-compounds"].value,
       settings: Object.fromEntries(setupAxes.map(axis => [axis.key, numeric(axis.control)])),
       search: { seconds: numeric("search-seconds"), refine_laps: numeric("search-refine"), stall_laps: numeric("search-stall"), idle_batches: numeric("search-idle") } };
-    let result, validation;
-    if (isSearch) {
-      const prepared = await request("prepare-inputs", payload, signal);
-      signal.throwIfAborted();
-      validation = write_input_logs(prepared, { save: save.name, mod: ui["input-mod"].textContent, calendar: calendarDefault });
-      let lastLog = -Infinity;
-      result = await search.run(prepared, payload, signal, (checkpoint, reference) => {
-        if (signal.aborted) return;
-        if (checkpoint.grading.rows.length) renderResults(ui, checkpoint, { validation, diagnostics: false });
-        ui.status.textContent = reference ? `Preparing ${reference.driver} / ${reference.compound.toUpperCase()} reference...`
-          : `${checkpoint.search.status}: ${checkpoint.search.drivers_ready}/${checkpoint.search.drivers_total} entries; ${checkpoint.search.statistics.evaluated || 0} candidate laps.`;
-        if (performance.now() - lastLog >= 500) {
-          write_log("search_progress", { validation, phase: checkpoint.search.status, drivers_ready: checkpoint.search.drivers_ready,
-            drivers_total: checkpoint.search.drivers_total, evaluated: checkpoint.search.statistics.evaluated || 0 });
-          lastLog = performance.now();
-        }
-      });
-    } else result = await request("grade-setups", payload, signal);
+    const prepared = await request("prepare-inputs", payload, signal);
     signal.throwIfAborted();
-    validation ??= write_input_logs(result, { save: save.name, mod: ui["input-mod"].textContent, calendar: calendarDefault });
+    const validation = write_input_logs(prepared, { save: save.name, mod: ui["input-mod"].textContent, calendar: calendarDefault });
+    let lastLog = -Infinity;
+    const progress = (checkpoint, reference) => {
+      if (signal.aborted) return;
+      if (checkpoint.grading.rows.length) renderResults(ui, checkpoint, { validation, diagnostics: false });
+      ui.status.textContent = reference ? `Preparing ${reference.driver} / ${reference.compound.toUpperCase()} reference...`
+        : isSearch ? `${checkpoint.search.status}: ${checkpoint.search.drivers_ready}/${checkpoint.search.drivers_total} entries; ${checkpoint.search.statistics.evaluated || 0} candidate laps.` : "Grading the entered setup...";
+      if (isSearch && performance.now() - lastLog >= 500) {
+        write_log("search_progress", { validation, phase: checkpoint.search.status, drivers_ready: checkpoint.search.drivers_ready,
+          drivers_total: checkpoint.search.drivers_total, evaluated: checkpoint.search.statistics.evaluated || 0 });
+        lastLog = performance.now();
+      }
+    };
+    const result = await (isSearch ? search.run : search.grade)(prepared, payload, signal, progress);
+    signal.throwIfAborted();
     if (result.grading.rows.length) renderResults(ui, result, { validation });
-    else { clearResult(); ui.status.textContent = "Search stopped before an entry finished preparation."; }
+    else { clearResult(); ui.status.textContent = "Stopped before an entry finished preparation."; }
+    if (!isSearch && result.grading_status === "cancelled") ui.status.textContent = "Grading stopped; completed entries are shown.";
+    if (!isSearch && result.grading_status === "worker_error") ui.status.textContent = `Grading stopped: ${result.grading_message} Completed entries are shown.`;
     if (isSearch) write_log("search_completed", { validation, ...result.search });
   }
   ui["prepare-inputs"].onclick = () => job(signal => calculate(signal, false));

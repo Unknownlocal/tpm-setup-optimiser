@@ -1,23 +1,11 @@
 import { rankMods } from "./mod-resolver.js";
 import { prepareInputs, trackOptions } from "./input-preparation.js";
 import { resolveDefaultCircuit } from "./event-resolution.js";
-import { simulateLaps, lapEngineReadiness } from "./lap-physics.js";
-import { predictLaps } from "./save-laps.js";
-import { gradeSetups } from "./setup-grading.js";
-
-const lapJobs = new Map();
-const lapOperations = { "simulate-laps": simulateLaps, "predict-laps": predictLaps, "grade-setups": gradeSetups };
 
 self.onmessage = async ({ data: { id, type, payload } }) => {
-  if (type === "cancel") { lapJobs.get(id)?.abort(); return; }
   try {
     let result;
-    if (Object.hasOwn(lapOperations, type)) {
-      const controller = new AbortController();
-      lapJobs.set(id, controller);
-      try { result = await lapOperations[type](payload, controller.signal); }
-      finally { lapJobs.delete(id); }
-    } else if (type === "default-circuit") {
+    if (type === "default-circuit") {
       result = await resolveDefaultCircuit(payload);
     } else if (type === "prepare-inputs") {
       result = await prepareInputs(payload);
@@ -46,4 +34,4 @@ self.onmessage = async ({ data: { id, type, payload } }) => {
 };
 
 // All worker modules are imported before the UI enables local folder access.
-self.postMessage({ ready: true, lap_engine: await lapEngineReadiness() });
+self.postMessage({ ready: true });
