@@ -1,6 +1,6 @@
 import { lapEngineReadiness } from "./lap-physics.js";
 import { prepareDriver, stepDriver, driverSnapshot } from "./driver-search.js";
-import { gradeDriver } from "./setup-grading.js";
+import { gradeDriver } from "./grade-driver.js";
 import { prepareInputs } from "./input-preparation.js";
 import { resolveTemperature } from "./session-conditions.js";
 

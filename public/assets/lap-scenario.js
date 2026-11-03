@@ -2,6 +2,7 @@ import { finite, requireValue } from "./lap-contract.js";
 import { createConditions } from "./session-conditions.js";
 import { createSavedCars } from "./saved-car.js";
 import { simulateLaps } from "./lap-physics.js";
+import { createGrading } from "./setup-grading.js";
 
 /** Share fixed equipment and weather between candidate and reference laps.
  * This follows the desktop adapter's fresh practice-session defaults: push pace,
@@ -20,6 +21,7 @@ export async function createLapScenario(source, payload, signal) {
   const { wind, variations, tyres } = await createConditions(source, seed);
   signal?.throwIfAborted();
   const cars = await createSavedCars(source);
+  const grading = await createGrading();
   signal?.throwIfAborted();
   function row(driver, compound, settings = source.settings) {
     const car = cars.get(driver.name), setup = car.setups([settings], tyres.get(compound.name))[0];
@@ -42,7 +44,8 @@ export async function createLapScenario(source, payload, signal) {
       oval_trait_corner_kmh_delta: 0, oval_trait_brake_mult: 1, drs_extra_speed_kmh: 0, drs_speed_windows: [],
     };
     return { driver: driver.name, entry: driver.entry, compound: compound.name, settings,
-      balance: setup.balance, traction: setup.traction, tyre_temperature_c: grip.temperature_c, inputs: input };
+      balance: setup.balance, traction: setup.traction, tyre_temperature_c: grip.temperature_c,
+      preference_score: setup.preference_score, maximum_score: setup.maximum_score, inputs: input };
   }
   async function laps(rows, signal) {
     const numerical = { version: 1, track: source.track, car_profile: source.activePolicies.car, wind: wind.field, inputs: rows.map(row => row.inputs) };
@@ -50,5 +53,5 @@ export async function createLapScenario(source, payload, signal) {
     rows.forEach((row, i) => { row.lap_time_s = simulation.lap_times_s[i]; });
     return simulation.timing_ms;
   }
-  return { source, seed, wind: { speed_kmh: wind.speed_kmh, direction_deg: wind.direction_deg }, row, laps };
+  return { source, seed, wind: { speed_kmh: wind.speed_kmh, direction_deg: wind.direction_deg }, grading, row, laps };
 }

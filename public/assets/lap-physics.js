@@ -13,6 +13,7 @@ export async function loadEngine() {
     if (exports.ContractVersion() !== ENGINE_VERSION) throw new Error("Incompatible lap-engine version. Reload the page.");
     if (exports.CarContractVersion() !== 1) throw new Error("Incompatible car-engine version. Reload the page.");
     if (exports.ConditionsContractVersion() !== 1) throw new Error("Incompatible conditions-engine version. Reload the page.");
+    if (exports.GradingContractVersion() !== 1) throw new Error("Incompatible grading-engine version. Reload the page.");
     return exports;
   })();
   return engine;

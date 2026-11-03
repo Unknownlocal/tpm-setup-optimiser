@@ -22,14 +22,17 @@ export async function createSavedCars(source) {
         for (let start = 0; start < settings.length; start += 64) {
           const batch = settings.slice(start, start + 64);
           const inputs = batch.flatMap(s => [s.front_wing, s.rear_wing, s.front_pressure_psi, s.rear_pressure_psi, s.suspension_level]);
-          const raw = Array.from(tyreModel ? engine.EvaluateSetupTyres(model, tyreModel, inputs, values[12] === 1) : engine.EvaluateSetups(model, inputs));
-          const width = tyreModel ? 11 : 8;
+          // With tyres, one call returns setup/grip plus preference fit and the pruning ceiling.
+          // Pure setup callers keep the original eight-field response.
+          const raw = Array.from(tyreModel ? engine.EvaluateScoredSetups(model, tyreModel, inputs, values[12] === 1,
+            driver.preferences.balance_preference, driver.preferences.traction_preference) : engine.EvaluateSetups(model, inputs));
+          const width = tyreModel ? 13 : 8;
           requireValue(raw.length === batch.length * width && raw.every(Number.isFinite), "Invalid setup engine response.");
           for (let i = 0; i < batch.length; i++) {
             const row = raw.slice(i * width, (i + 1) * width);
             output.push({ delta: Object.fromEntries(ZONES.map((key, j) => [key, row[j]])),
               pressure: { accel_ms2: row[4], target_temp_delta_c: row[5] }, balance: row[6], traction: row[7],
-              ...(tyreModel ? { grip: { temperature_c: row[8], lateral: row[9], longitudinal: row[10] } } : {}) });
+              ...(tyreModel ? { grip: { temperature_c: row[8], lateral: row[9], longitudinal: row[10] }, preference_score: row[11], maximum_score: row[12] } : {}) });
           }
         }
         return output;

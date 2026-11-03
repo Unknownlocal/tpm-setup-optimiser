@@ -1,52 +1,37 @@
-import { finite } from "./lap-contract.js";
-import { createLapScenario } from "./lap-scenario.js";
-import { solveReference } from "./setup-reference.js";
+import { requireValue } from "./lap-contract.js";
+import { loadEngine } from "./lap-physics.js";
 
-const ANCHORS = [[0, 100], [.02, 98], [.05, 95], [.1, 90], [.2, 82], [.35, 73], [.55, 64], [.8, 52], [1.1, 38], [1.5, 24], [2, 0]];
-const GRADES = [[98, "S+"], [95, "S"], [90, "A+"], [82, "A"], [73, "B+"], [64, "B"], [52, "C"], [38, "D"], [24, "E"]];
-export const gradeFromScore = score => GRADES.find(([cutoff]) => finite(score, "setup score") >= cutoff)?.[1] || "F";
-
-/** The game measures pace loss relative to a 90-second reference lap. */
-export function paceScore(delta, reference) {
-  const normalised = Math.max(0, finite(delta, "pace delta")) * 90 / finite(reference, "reference lap", Number.MIN_VALUE);
-  for (let i = 1; i < ANCHORS.length; i++) {
-    const [left, leftScore] = ANCHORS[i - 1], [right, rightScore] = ANCHORS[i];
-    if (normalised <= right) return leftScore + (rightScore - leftScore) * ((normalised - left) / (right - left));
-  }
-  return 0;
-}
-
-export function assessSetup(row, driver, reference) {
-  const fit = 100 * Math.max(0, 1 - (Math.abs(row.balance - driver.preferences.balance_preference) + Math.abs(row.traction - driver.preferences.traction_preference)) / 70);
-  // Staged guidance can be beaten; the game caps the resulting pace score at 100.
-  const delta = Math.max(0, row.lap_time_s - reference.lap_time_s), pace = paceScore(delta, reference.lap_time_s);
-  const score = .85 * pace + .15 * fit;
-  return { ...row, score, grade: gradeFromScore(score), preference_score: fit, pace_score: pace,
-    pace_delta_s: delta, reference_lap_s: reference.lap_time_s, reference_settings: reference.settings };
-}
-
-/** Grade the entered setup only. Reference solving is required preparation, not setup search. */
-export async function gradeDriver(source, payload, name, signal, onReference = () => {}) {
-  const scenario = await createLapScenario(source, payload, signal), driver = source.drivers.find(driver => driver.name === name);
-  if (!driver) throw new Error("The grading entry is missing from the prepared save.");
-  const rows = source.tyres.map(compound => scenario.row(driver, compound));
-  await scenario.laps(rows, signal);
-  const graded = [], components = [];
-  let evaluated = 0;
-  for (const compound of source.tyres) {
-    onReference({ driver: name, compound: compound.name });
-    const reference = await solveReference(scenario, driver, compound, signal);
-    evaluated += reference.evaluated;
-    const row = rows.find(row => row.driver === driver.name && row.compound === compound.name);
-    components.push(assessSetup(row, driver, reference));
-  }
-  const dry = ["soft", "medium", "hard"].map(name => components.find(row => row.compound === name));
-  if (dry.every(Boolean)) {
-    const score = dry.reduce((sum, row) => sum + row.score, 0) / 3;
-    graded.push({ driver: driver.name, entry: driver.entry, compound: "avg_dry", score, grade: gradeFromScore(score),
-      compound_scores: Object.fromEntries(dry.map(row => [row.compound, row.score])),
-      compound_lap_times_s: Object.fromEntries(dry.map(row => [row.compound, row.lap_time_s])) });
-  }
-  graded.push(...components);
-  return { driver: name, entry: driver.entry, wind: scenario.wind, rows: graded, statistics: { reference_laps: evaluated } };
+let grading;
+/** Bridge C# grading to browser result objects. C# owns the equations and thresholds;
+ * this adapter packs numbers, checks responses and restores display metadata. */
+export async function createGrading() {
+  // Share one bridge and label table per worker; individual runs keep their own result rows.
+  if (!grading) grading = loadEngine().then(engine => {
+    const labels = Array.from(engine.GradeLabels());
+    function grade(index) {
+      requireValue(Number.isInteger(index) && typeof labels[index] === "string", "Invalid grade response.");
+      return labels[index];
+    }
+    return {
+      assess(rows, driver, reference) {
+        // Input triples are balance, traction and lap time. C# returns five fields per row:
+        // preference fit, pace score, pace loss, combined score and grade index.
+        const raw = Array.from(engine.AssessSetups(rows.flatMap(row => [row.balance, row.traction, row.lap_time_s]),
+          driver.preferences.balance_preference, driver.preferences.traction_preference, reference.lap_time_s));
+        requireValue(raw.length === rows.length * 5 && raw.every(Number.isFinite), "Invalid setup grading response.");
+        return rows.map((row, i) => ({ ...row, preference_score: raw[i * 5], pace_score: raw[i * 5 + 1], pace_delta_s: raw[i * 5 + 2],
+          score: raw[i * 5 + 3], grade: grade(raw[i * 5 + 4]), reference_lap_s: reference.lap_time_s, reference_settings: reference.settings }));
+      },
+      average(rows) {
+        // Average the completed compound scores in C#, retaining each original score/time
+        // separately for the AVG_DRY details shown to the user.
+        const values = Array.from(engine.AverageGrade(rows.map(row => row.score)));
+        requireValue(values.length === 2 && values.every(Number.isFinite), "Invalid average grading response.");
+        return { score: values[0], grade: grade(values[1]),
+          compound_scores: Object.fromEntries(rows.map(row => [row.compound, row.score])),
+          compound_lap_times_s: Object.fromEntries(rows.map(row => [row.compound, row.lap_time_s])) };
+      },
+    };
+  });
+  return grading;
 }

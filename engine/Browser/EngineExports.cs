@@ -36,6 +36,33 @@ public static partial class EngineExports
     [JSExport]
     public static double[] RandomWords(string seed, double[] state) => GameRandom.Words(seed, state);
 
+    // These exports pass primitive batches across the browser boundary; grading policy
+    // and reference-stage decisions stay in Core, while the worker schedules lap batches.
+    [JSExport]
+    public static int GradingContractVersion() => 1;
+
+    [JSExport]
+    public static string[] GradeLabels() => SetupGrading.Labels();
+
+    [JSExport]
+    public static double[] ReferenceBounds(string json) => ReferenceGuidance.Bounds(json);
+
+    [JSExport]
+    public static double[] ReferencePlan(double[] bounds, int stage, double[] previous) => ReferenceGuidance.Plan(bounds, stage, previous);
+
+    [JSExport]
+    public static int ReferenceWinner(double[] times, double incumbent) => ReferenceGuidance.Winner(times, incumbent);
+
+    [JSExport]
+    public static double[] AssessSetups(double[] rows, double balance, double traction, double reference) => SetupGrading.Assess(rows, balance, traction, reference);
+
+    [JSExport]
+    public static double[] AverageGrade(double[] scores) => SetupGrading.Average(scores);
+
+    [JSExport]
+    public static double[] EvaluateScoredSetups(double[] model, double[] tyres, double[] settings, bool protectedTemperature, double balance, double traction) =>
+        SetupGrading.Setups(model, tyres, settings, protectedTemperature, balance, traction);
+
     [JSExport]
     public static double[] Evaluate(double[] packet)
     {
