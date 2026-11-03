@@ -1,8 +1,8 @@
 import { finite, clamp, requireValue } from "./lap-contract.js";
 import { PythonRandom } from "./python-random.js";
 import { initialWind } from "./session-wind.js";
-import { fittedCar, enginePower, partFor } from "./saved-car.js";
-import { setupEffects, tyreGrip } from "./fixed-setup.js";
+import { createSavedCars } from "./saved-car.js";
+import { tyreGrip } from "./tyre-grip.js";
 import { simulateLaps } from "./lap-physics.js";
 
 /** Share fixed equipment and weather between candidate and reference laps.
@@ -28,10 +28,10 @@ export async function createLapScenario(source, payload, signal) {
   const staff = source.dynamicsStaff[0];
   const morale = clamp(50 + (staff?.morale_effects || []).reduce((sum, effect) => sum + (effect.amount || 0), 0), 0, 100);
   const skill = clamp(Math.trunc((staff?.skills?.tire_temp ?? staff?.skill ?? 1) + (morale - 50) / 50 * 2 + .5), 1, 20);
-  const cars = new Map(source.drivers.map(driver => [driver.name, { ...fittedCar(source, driver),
-    power: enginePower(source, driver), engineMass: Math.max(50, partFor(driver, "engine").item.mass_kg) }]));
+  const cars = await createSavedCars(source);
+  signal?.throwIfAborted();
   function row(driver, compound, settings = source.settings) {
-    const car = cars.get(driver.name), setup = setupEffects({ ...source, settings }, driver, car.aero, car.chassis);
+    const car = cars.get(driver.name), setup = car.setups([settings])[0];
     const grip = tyreGrip(source, compound, setup.pressure, skill, car.protectedTemperature), attrs = car.attrs;
     // Setup effects are speeds in km/h; the physics boundary takes rating points.
     const input = {

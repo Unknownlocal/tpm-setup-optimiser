@@ -2,7 +2,7 @@ import { ENGINE_VERSION, selfTestPayload } from "./lap-contract.js";
 import { prepareLapRows, packLaps } from "./lap-inputs.js";
 
 let engine;
-async function loadEngine() {
+export async function loadEngine() {
   // A standalone runtime belongs to a calculation worker, never the UI thread.
   if (typeof WorkerGlobalScope === "undefined" || !(self instanceof WorkerGlobalScope)) throw new Error("Lap calculations require a browser worker.");
   if (!engine) engine = (async () => {
@@ -11,6 +11,7 @@ async function loadEngine() {
     const runtime = await dotnet.create();
     const exports = (await runtime.getAssemblyExports(runtime.getConfig().mainAssemblyName)).EngineExports;
     if (exports.ContractVersion() !== ENGINE_VERSION) throw new Error("Incompatible lap-engine version. Reload the page.");
+    if (exports.CarContractVersion() !== 1) throw new Error("Incompatible car-engine version. Reload the page.");
     return exports;
   })();
   return engine;

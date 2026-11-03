@@ -3,7 +3,7 @@ using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using Tpm.Setup.Core;
 
-/// <summary>Versioned numerical batches; no save files or browser state enter the core.</summary>
+/// <summary>Project saved equipment once, then pass numerical batches without retaining browser state.</summary>
 [SupportedOSPlatform("browser")]
 public static partial class EngineExports
 {
@@ -11,6 +11,15 @@ public static partial class EngineExports
 
     [JSExport]
     public static int ContractVersion() => 1;
+
+    [JSExport]
+    public static int CarContractVersion() => 1;
+
+    [JSExport]
+    public static double[] BuildCars(string json) => SavedCar.Build(json);
+
+    [JSExport]
+    public static double[] EvaluateSetups(double[] model, double[] settings) => FormulaSetup.Evaluate(model, settings);
 
     [JSExport]
     public static double[] Evaluate(double[] packet)

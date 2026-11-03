@@ -18,8 +18,13 @@ def main():
     version = subprocess.check_output(["dotnet", "--version"], cwd=ENGINE, text=True).strip()
     if not version.startswith("10."):
         raise SystemExit("The engine requires the .NET 10 SDK.")
-    subprocess.run(["dotnet", "publish", "Tpm.Setup.Browser.csproj", "-c", "Release"], cwd=ENGINE, check=True)
     framework = ENGINE / "bin/Release/net10.0/publish/wwwroot/_framework"
+    # Publish retains old fingerprints. Clear its flat output, keeping AOT caches.
+    if framework.is_dir():
+        for old in framework.iterdir():
+            if old.is_file():
+                old.unlink()
+    subprocess.run(["dotnet", "publish", "Tpm.Setup.Browser.csproj", "-c", "Release"], cwd=ENGINE, check=True)
     if not framework.is_dir():
         raise SystemExit("The published .NET runtime folder was not produced.")
     destination = OUTPUT / "_framework"
