@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "main.py": {
+      "excludeFiles": "{engine/Core.Tests/**,tests/**}"
+    }
+  },
   "headers": [{
     "source": "/(.*)",
     "headers": [
