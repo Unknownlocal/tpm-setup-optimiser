@@ -42,11 +42,12 @@ static class SavedCarChecks
         var car = SavedCar.Build(Source);
         // Understanding is applied before potential caps; suppliers follow the caps.
         Near(car[1], 20); Near(car[4], 9); Near(car[6], 11); Near(car[9], 70); Near(car[10], 57.37);
-        var setup = FormulaSetup.Evaluate(car.AsSpan(1 + SavedCar.ValueLength), [20, 0, 20, 22, 1]);
-        double[] expected = [9.775, 1.775, -10.225, 5, -.1, 1, 80, 30];
-        for (int i = 0; i < expected.Length; i++) Near(setup[i], expected[i]);
+        var model = new FormulaSetup(car.AsSpan(1 + SavedCar.ValueLength));
+        var setup = model.Evaluate([20, 0, 20, 22, 1]);
+        Near(setup.Slow, 9.775); Near(setup.Med, 1.775); Near(setup.High, -10.225); Near(setup.Straight, 5);
+        Near(setup.Acceleration, -.1); Near(setup.TemperatureDelta, 1); Near(setup.Balance, 80); Near(setup.Traction, 30);
         // Chassis aero efficiency reduces the wing drag penalty, not positive gains.
-        Near(FormulaSetup.Evaluate(car.AsSpan(1 + SavedCar.ValueLength), [20, 20, 21, 21, 3])[3], -12);
+        Near(model.Evaluate([20, 20, 21, 21, 3]).Straight, -12);
         Near(SavedCar.Build(Source.Replace("\"condition\":50", "\"condition\":0"))[10], 57.12);
         try
         {

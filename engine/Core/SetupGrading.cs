@@ -2,6 +2,9 @@ using System;
 
 namespace Tpm.Setup.Core;
 
+/// <summary>One setup's preference, pace and combined grade.</summary>
+public readonly record struct SetupAssessment(double Preference, double Pace, double Delta, double Score, int Grade);
+
 /// <summary>Score a simulated setup against its compound's reference lap and the driver's
 /// preferred balance/traction. Scores run from 0 to 100; grade indices are for the browser bridge.</summary>
 public static class SetupGrading
@@ -46,32 +49,23 @@ public static class SetupGrading
         return 0;
     }
 
-    /// <summary>Input rows are balance, traction and lap time. Output rows are
-    /// preference fit, pace score, nonnegative pace loss, combined score and grade index.</summary>
-    public static double[] Assess(double[] rows, double preferredBalance, double preferredTraction, double reference)
+    /// <summary>Combine one lap's pace and driver preference fit into a grade.</summary>
+    public static SetupAssessment Assess(double balance, double traction, double lap, double preferredBalance, double preferredTraction, double reference)
     {
-        if (rows.Length % 3 != 0 || rows.Length > 64 * 3) throw new ArgumentException("Invalid setup grading batch.");
-        var result = new double[rows.Length / 3 * 5];
-        for (int i = 0; i < rows.Length / 3; i++)
-        {
-            double fit = Preference(rows[i * 3], rows[i * 3 + 1], preferredBalance, preferredTraction);
-            // Staged guidance can be beaten. A faster lap still receives at most 100 pace points.
-            double delta = Math.Max(0, Finite(rows[i * 3 + 2]) - reference), pace = PaceScore(delta, reference);
-            // The final grade favours pace: 85% pace and 15% driver preference fit.
-            double score = .85 * pace + .15 * fit;
-            result[i * 5] = fit; result[i * 5 + 1] = pace; result[i * 5 + 2] = delta; result[i * 5 + 3] = score; result[i * 5 + 4] = Grade(score);
-        }
-        return result;
+        double fit = Preference(balance, traction, preferredBalance, preferredTraction);
+        // Staged guidance can be beaten. A faster lap still receives at most 100 pace points.
+        double delta = Math.Max(0, Finite(lap) - reference), pace = PaceScore(delta, reference);
+        // The final grade favours pace: 85% pace and 15% driver preference fit.
+        double score = .85 * pace + .15 * fit;
+        return new(fit, pace, delta, score, Grade(score));
     }
 
     /// <summary>Average independently graded soft/medium/hard scores for one shared setup.
     /// Each component has already used its own reference; assign the letter grade afterwards.</summary>
-    public static double[] Average(double[] scores)
+    public static (double Score, int Grade) Average(double soft, double medium, double hard)
     {
-        if (scores.Length != 3) throw new ArgumentException("A dry average needs three compound scores.");
-        double sum = 0; foreach (double score in scores) sum += Finite(score);
-        double average = sum / scores.Length;
-        return [average, Grade(average)];
+        double average = (Finite(soft) + Finite(medium) + Finite(hard)) / 3;
+        return (average, Grade(average));
     }
 
 }

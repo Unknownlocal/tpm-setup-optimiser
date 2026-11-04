@@ -34,7 +34,7 @@ public sealed class SearchJob : IDisposable
         var names = Items(At(root, "names")).Select(value => Text(value)).ToArray();
         if (names.Length == 0 || names.Distinct().Count() != names.Length) throw new ArgumentException("A worker needs distinct driver entries.");
         var cars = SavedCar.Build(source); var conditions = SessionConditions.Build(source, seed, Text(At(payload, "trackId")), Flag(At(payload, "testing")));
-        var motion = new MotionModel(At(source, "track"), profile, conditions);
+        var motion = new MotionModel(At(source, "track"), profile, conditions.Wind);
         foreach (string name in names)
         {
             int index = Array.FindIndex(drivers, driver => Text(At(driver, "name")) == name);

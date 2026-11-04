@@ -43,7 +43,7 @@ public sealed class MotionModel
         return result;
     }
 
-    public MotionModel(JsonElement track, JsonElement profile, double[]? conditions = null, JsonElement wind = default)
+    public MotionModel(JsonElement track, JsonElement profile, WindModel? projectedWind = null, JsonElement wind = default)
     {
         if (profile.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Object)) throw new ArgumentException("Invalid prepared car profile.");
         length = LapInput.Need(At(track, "length_km"), "track length");
@@ -58,12 +58,16 @@ public sealed class MotionModel
         double corner = Multiplier("corner_speed_multiplier"); acceleration = Multiplier("acceleration_multiplier"); braking = Multiplier("braking_multiplier"); dragMultiplier = Multiplier("drag_multiplier");
         micro = Sectors(At(track, "micro_sectors"), true);
         for (int i = 0; i < micro.Length; i++) if (micro[i].Type is "low" or "med" or "high") micro[i] = micro[i] with { Target = micro[i].Target * corner };
-        if (conditions != null && conditions[4] > 0)
+        if (projectedWind is { Sectors.Length: > 0 })
         {
-            int count = (int)conditions[4], offset = 8 + (int)conditions[6] + (int)conditions[7] * TyreGrip.ModelLength;
+            var sectors = projectedWind.Sectors;
+            int count = sectors.Length;
             if (count > 2048) throw new ArgumentException("Wind geometry exceeds 2,048 sectors.");
-            sources = new int[count]; distances = new double[count]; losses = new double[count]; tails = new double[count]; brakeCap = conditions[3];
-            for (int i = 0; i < count; i++) { sources[i] = (int)conditions[offset + i * 4]; distances[i] = length * conditions[offset + i * 4 + 1] / 100; losses[i] = conditions[offset + i * 4 + 2]; tails[i] = conditions[offset + i * 4 + 3]; }
+            sources = sectors.Select(sector => sector.Source).ToArray();
+            distances = sectors.Select(sector => length * sector.LengthPercent / 100).ToArray();
+            losses = sectors.Select(sector => sector.CornerLoss).ToArray();
+            tails = sectors.Select(sector => sector.Tailwind).ToArray();
+            brakeCap = projectedWind.BrakeCap;
         }
         else if (wind.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
         {

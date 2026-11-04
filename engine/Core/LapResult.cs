@@ -24,14 +24,14 @@ public sealed class LapResult
 
     public LapResult Assess(double balancePreference, double tractionPreference, ReferenceResult reference)
     {
-        var values = SetupGrading.Assess([Balance, Traction, Lap], balancePreference, tractionPreference, reference.Lap);
-        Preference = values[0]; Pace = values[1]; Delta = values[2]; Score = values[3]; Grade = (int)values[4]; Reference = reference;
+        var assessment = SetupGrading.Assess(Balance, Traction, Lap, balancePreference, tractionPreference, reference.Lap);
+        Preference = assessment.Preference; Pace = assessment.Pace; Delta = assessment.Delta; Score = assessment.Score; Grade = assessment.Grade; Reference = reference;
         return this;
     }
     public static LapResult Average(LapResult[] rows)
     {
-        var values = SetupGrading.Average([rows[0].Score, rows[1].Score, rows[2].Score]);
-        return new() { Compound = "avg_dry", Settings = rows[0].Settings, Score = values[0], Grade = (int)values[1], Components = rows };
+        var average = SetupGrading.Average(rows[0].Score, rows[1].Score, rows[2].Score);
+        return new() { Compound = "avg_dry", Settings = rows[0].Settings, Score = average.Score, Grade = average.Grade, Components = rows };
     }
 }
 

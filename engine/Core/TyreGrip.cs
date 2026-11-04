@@ -6,11 +6,19 @@ using static Tpm.Setup.Core.JsonValues;
 namespace Tpm.Setup.Core;
 
 /// <summary>Fresh warmed tyres, with skill-adjusted windows and user-supplied water depth.</summary>
-public static class TyreGrip
+public sealed class TyreGrip
 {
-    public const int ModelLength = 5;
+    readonly double target, low, high, lateral, longitudinal;
 
-    public static double[] Compile(JsonElement compound, double water, double ambient, double skill)
+    TyreGrip(double target, double low, double high, double lateral, double longitudinal)
+    {
+        foreach (double value in new[] { target, low, high, lateral, longitudinal })
+            if (!double.IsFinite(value)) throw new ArgumentException("Invalid tyre model value.");
+        this.target = target; this.low = low; this.high = high;
+        this.lateral = lateral; this.longitudinal = longitudinal;
+    }
+
+    public static TyreGrip Compile(JsonElement compound, double water, double ambient, double skill)
     {
         var bands = Items(At(compound, "wetness_states")).ToArray();
         if (bands.Length == 0) throw new ArgumentException("Tyre compound has no wetness bands.");
@@ -25,34 +33,18 @@ public static class TyreGrip
         double shift = skill < 10 ? (skill - 10) * (5.0 / 9) : (skill - 10) * .5;
         double low = window[0] - shift, high = window[1] + shift;
         if (high < low) low = high = (low + high) * .5;
-        // Fixed model: warmed target, temperature window and wetness-adjusted grip.
-        return [ambient + (water > 1 ? 60 : 70), low, high,
-            Number(At(compound, "lat_grip_base")) * Number(At(band, "lat_mult")), Number(At(compound, "long_grip_base")) * Number(At(band, "long_mult"))];
+        return new(ambient + (water > 1 ? 60 : 70), low, high,
+            Number(At(compound, "lat_grip_base")) * Number(At(band, "lat_mult")), Number(At(compound, "long_grip_base")) * Number(At(band, "long_mult")));
     }
 
-    public static (double Temperature, double Lateral, double Longitudinal) Evaluate(ReadOnlySpan<double> model, double pressureDelta, bool protectedTemperature)
+    /// <summary>Apply the setup's pressure effect to the compiled warmed target, then calculate grip.</summary>
+    public (double Temperature, double Lateral, double Longitudinal) Evaluate(double pressureDelta, bool protectedTemperature)
     {
-        if (model.Length != ModelLength || !double.IsFinite(pressureDelta)) throw new ArgumentException("Invalid tyre model.");
-        foreach (double value in model) if (!double.IsFinite(value)) throw new ArgumentException("Invalid tyre model value.");
-        double temperature = Clamp(model[0] + pressureDelta, 20, 180);
-        double thermal = protectedTemperature ? 1 : Math.Max(.8, 1 - .00005 * Math.Max(0, model[1] - temperature) - .00025 * Math.Max(0, temperature - model[2]));
-        double lateral = model[3] * thermal, longitudinal = model[4] * thermal;
-        if (!double.IsFinite(lateral) || !double.IsFinite(longitudinal)) throw new ArgumentException("Invalid tyre grip.");
-        return (temperature, Clamp(lateral, .35, 1.25), Clamp(longitudinal, .3, 1.25));
-    }
-
-    /// <summary>Apply pressure changes before calculating warmed tyre temperature and grip.</summary>
-    public static double[] Setups(ReadOnlySpan<double> setupModel, ReadOnlySpan<double> tyreModel, ReadOnlySpan<double> settings, bool protectedTemperature)
-    {
-        var setups = FormulaSetup.Evaluate(setupModel, settings);
-        var output = new double[setups.Length / FormulaSetup.ResultLength * 11];
-        for (int row = 0; row < setups.Length / FormulaSetup.ResultLength; row++)
-        {
-            var setup = setups.AsSpan(row * FormulaSetup.ResultLength, FormulaSetup.ResultLength);
-            setup.CopyTo(output.AsSpan(row * 11));
-            var grip = Evaluate(tyreModel, setup[5], protectedTemperature);
-            output[row * 11 + 8] = grip.Temperature; output[row * 11 + 9] = grip.Lateral; output[row * 11 + 10] = grip.Longitudinal;
-        }
-        return output;
+        if (!double.IsFinite(pressureDelta)) throw new ArgumentException("Invalid tyre pressure effect.");
+        double temperature = Clamp(target + pressureDelta, 20, 180);
+        double thermal = protectedTemperature ? 1 : Math.Max(.8, 1 - .00005 * Math.Max(0, low - temperature) - .00025 * Math.Max(0, temperature - high));
+        double lat = lateral * thermal, lon = longitudinal * thermal;
+        if (!double.IsFinite(lat) || !double.IsFinite(lon)) throw new ArgumentException("Invalid tyre grip.");
+        return (temperature, Clamp(lat, .35, 1.25), Clamp(lon, .3, 1.25));
     }
 }

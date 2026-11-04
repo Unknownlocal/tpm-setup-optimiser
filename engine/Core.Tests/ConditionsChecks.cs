@@ -32,12 +32,12 @@ static class ConditionsChecks
           {"min_mm":0,"max_mm":1,"lat_mult":1,"long_mult":1},
           {"min_mm":1,"max_mm":5,"lat_mult":0.8,"long_mult":0.7}]}
         """);
-        var dry = TyreGrip.Evaluate(TyreGrip.Compile(compound.RootElement, 1, 30, 10), 0, false);
+        var dry = TyreGrip.Compile(compound.RootElement, 1, 30, 10).Evaluate(0, false);
         Near(dry.Temperature, 100); Near(dry.Lateral, 1); Near(dry.Longitudinal, .9);
         var wetModel = TyreGrip.Compile(compound.RootElement, 1.001, 50, 10);
-        var wet = TyreGrip.Evaluate(wetModel, 5, false);
+        var wet = wetModel.Evaluate(5, false);
         Near(wet.Temperature, 115); Near(wet.Lateral, .797); Near(wet.Longitudinal, .6276375);
-        Near(TyreGrip.Evaluate(wetModel, 5, true).Lateral, .8);
+        Near(wetModel.Evaluate(5, true).Lateral, .8);
 
         using var loop = JsonDocument.Parse("""
         {"trackId":"loop","testing":false,"sessionOptions":{},"definitions":{"config":{"wind":{"starting_speed_kmh":[36,36]}}},
@@ -47,9 +47,23 @@ static class ConditionsChecks
         """);
         var wind = WindModel.Build(loop.RootElement, 51);
         Near(wind.Speed, 36); Near(wind.Direction, 145.67479187298034);
-        if (wind.Sectors.Count != 16) throw new Exception("Square circuit wind subdivision changed.");
-        Near(wind.Sectors[3], 5.638894485683556); Near(wind.Sectors[7], 8.258502829165078);
-        Near(wind.Sectors[11], -5.638894485683556); Near(wind.Sectors[15], -8.258502829165078);
+        if (wind.Sectors.Length != 4) throw new Exception("Square circuit wind subdivision changed.");
+        Near(wind.Sectors[0].Tailwind, 5.638894485683556); Near(wind.Sectors[1].Tailwind, 8.258502829165078);
+        Near(wind.Sectors[2].Tailwind, -5.638894485683556); Near(wind.Sectors[3].Tailwind, -8.258502829165078);
+
+        using var bent = JsonDocument.Parse("""
+        {"trackId":"loop","definitions":{"config":{"wind":{"starting_speed_kmh":[36,36]}}},
+         "track":{"points":[[0,0],[100,0],[100,0],[100,100],[0,100]],
+                  "micro_sectors":[{"type":"high","length_pct":80}]}}
+        """);
+        var split = WindModel.Build(bent.RootElement, 51);
+        if (split.Sectors.Length != 4) throw new Exception("A bent sector needs four wind samples.");
+        for (int i = 0; i < split.Sectors.Length; i++)
+        {
+            Near(split.Sectors[i].LengthPercent, 25); Near(split.Sectors[i].Source, 0);
+            Near(split.Sectors[i].Tailwind, wind.Sectors[i].Tailwind);
+            Near(split.Sectors[i].CornerLoss, wind.Sectors[i].CornerLoss);
+        }
 
         var random = new GameRandom(51);
         Near(random.Random(), .243517762709337);

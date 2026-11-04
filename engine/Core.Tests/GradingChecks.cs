@@ -13,13 +13,13 @@ static class GradingChecks
     {
         Near(SetupGrading.PaceScore(.035, 90), 96.5);
         Near(SetupGrading.PaceScore(.07, 180), 96.5);
-        var grade = SetupGrading.Assess([34, 50, 90.15], 20, 50, 90);
-        Near(grade[0], 80); Near(grade[1], 86); Near(grade[3], 85.1);
-        if (SetupGrading.Labels()[(int)grade[4]] != "A") throw new Exception("Weighted setup grade changed.");
-        Near(SetupGrading.Assess([20, 50, 89], 20, 50, 90)[3], 100);
-        var average = SetupGrading.Average([98.7, 96.3, 91.2]);
-        Near(average[0], 95.4);
-        if (SetupGrading.Labels()[(int)average[1]] != "S") throw new Exception("Dry compound average grade changed.");
+        var grade = SetupGrading.Assess(34, 50, 90.15, 20, 50, 90);
+        Near(grade.Preference, 80); Near(grade.Pace, 86); Near(grade.Score, 85.1);
+        if (SetupGrading.Labels()[grade.Grade] != "A") throw new Exception("Weighted setup grade changed.");
+        Near(SetupGrading.Assess(20, 50, 89, 20, 50, 90).Score, 100);
+        var average = SetupGrading.Average(98.7, 96.3, 91.2);
+        Near(average.Score, 95.4);
+        if (SetupGrading.Labels()[average.Grade] != "S") throw new Exception("Dry compound average grade changed.");
 
         var bounds = ReferenceGuidance.Bounds("""
         {"wing_levels":{"min_level":0,"neutral_level":10,"max_level":20},
