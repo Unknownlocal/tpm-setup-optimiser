@@ -2,11 +2,20 @@ using System;
 
 namespace Tpm.Setup.Core;
 
-/// <summary>Closed flying lap in metres, seconds and m/s, using one-metre steps.</summary>
-public static class LapIntegrator
+/// <summary>Closed flying lap in metres, seconds and m/s, using one-metre steps.
+/// One motion model owns this workspace and calls it sequentially.</summary>
+public sealed class LapIntegrator
 {
     static readonly double[] Speeds = [0, 50, 100, 150, 200, 250, 300, 330, 350];
     static readonly double[] Rates = [1.75, 1.6, 1.45, 1.25, .95, .75, .4, .2, .05];
+    readonly double[] nodes, old, entries, exits;
+
+    public LapIntegrator(int sectors)
+    {
+        if (sectors <= 0) throw new ArgumentException("A lap needs at least one sector.");
+        nodes = new double[sectors + 1]; old = new double[sectors + 1];
+        entries = new double[sectors]; exits = new double[sectors];
+    }
 
     static double Curve(double speed)
     {
@@ -23,11 +32,11 @@ public static class LapIntegrator
         return Math.Max(.05, propulsion * Curve(speed * 3.6) - drag * air * air);
     }
 
-    public static double Integrate(ReadOnlySpan<double> distances, ReadOnlySpan<double> caps, ReadOnlySpan<double> brakes, ReadOnlySpan<double> tails, double propulsion, double drag, bool windy)
+    public double Integrate(ReadOnlySpan<double> distances, ReadOnlySpan<double> caps, ReadOnlySpan<double> brakes, ReadOnlySpan<double> tails, double propulsion, double drag, bool windy)
     {
         int n = caps.Length, start = 0;
-        if (n == 0 || distances.Length != n || brakes.Length != n || tails.Length != n)
-            throw new ArgumentException("Lap sector arrays must have equal nonzero lengths.");
+        if (n != entries.Length || distances.Length != n || brakes.Length != n || tails.Length != n)
+            throw new ArgumentException("Lap sector arrays must match the workspace size.");
         if (!double.IsFinite(propulsion) || propulsion <= 0 || !double.IsFinite(drag) || drag < 0)
             throw new ArgumentException("Invalid propulsion or drag.");
         for (int i = 0; i < n; i++)
@@ -35,10 +44,10 @@ public static class LapIntegrator
                 || !double.IsFinite(brakes[i]) || brakes[i] <= 0 || !double.IsFinite(tails[i]))
                 throw new ArgumentException("Invalid lap sector values.");
         for (int i = 1; i < n; i++) if (caps[i] < caps[start]) start = i;
-        var nodes = new double[n + 1]; Array.Fill(nodes, caps[start]);
+        Array.Fill(nodes, caps[start]);
         for (int iteration = 0; iteration < 12; iteration++)
         {
-            var old = (double[])nodes.Clone();
+            Array.Copy(nodes, old, nodes.Length);
             nodes[0] = Math.Min(nodes[0], caps[start]);
             for (int i = 0; i < n; i++)
             {
@@ -65,7 +74,6 @@ public static class LapIntegrator
             for (int i = 0; i <= n; i++) if (nodes[i] != old[i]) { same = false; break; }
             if (same) break;
         }
-        var entries = new double[n]; var exits = new double[n];
         for (int i = 0; i < n; i++) { entries[(start + i) % n] = nodes[i]; exits[(start + i) % n] = nodes[i + 1]; }
         double lap = 0;
         for (int i = 0; i < n; i++)

@@ -8,18 +8,21 @@ static void Near(double actual, double expected)
 }
 
 // A constant-speed flying lap has a direct distance/speed solution.
-Near(LapIntegrator.Integrate([400], [20], [10], [0], 7, .00018, false), 20);
+var constant = new LapIntegrator(1);
+Near(constant.Integrate([400], [20], [10], [0], 7, .00018, false), 20);
 // Authored three-zone laps exercise acceleration, braking closure and wind.
-Near(LapIntegrator.Integrate([200, 100, 150], [35, 15, 30], [10, 9, 11], [0, 0, 0], 7, .00018, false), 18.340876470509045);
-Near(LapIntegrator.Integrate([200, 100, 150], [35, 15, 30], [10, 9, 11], [3, -2, 1], 7, .00018, true), 18.3405338872926);
+var lap = new LapIntegrator(3);
+Near(lap.Integrate([200, 100, 150], [35, 15, 30], [10, 9, 11], [0, 0, 0], 7, .00018, false), 18.340876470509045);
+Near(lap.Integrate([200, 100, 150], [35, 15, 30], [10, 9, 11], [3, -2, 1], 7, .00018, true), 18.3405338872926);
 
 try
 {
-    LapIntegrator.Integrate([double.NaN], [20], [10], [0], 7, .00018, false);
+    constant.Integrate([double.NaN], [20], [10], [0], 7, .00018, false);
     throw new Exception("Invalid geometry was accepted.");
 }
 catch (ArgumentException) { }
 Console.WriteLine("Core lap checks passed.");
+MotionChecks.Run();
 SavedCarChecks.Run();
 ConditionsChecks.Run();
 GradingChecks.Run();

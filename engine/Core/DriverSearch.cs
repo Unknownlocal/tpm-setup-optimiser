@@ -14,7 +14,7 @@ public sealed class DriverSearch : IDisposable
     public string? CurrentReference { get; private set; }
     public bool Ready { get; private set; }
     public bool HasActive => Cases.Any(state => state.StopReason == null);
-    public int CacheEntries => scorers.Sum(scorer => scorer.CacheEntries);
+    public int CacheEntries => Scenario.SetupCacheEntries + scorers.Sum(scorer => scorer.CacheEntries);
     readonly List<CompoundSearch> scorers = [];
     readonly SearchLimits limits;
     readonly GameRandom random;
@@ -91,5 +91,5 @@ public sealed class DriverSearch : IDisposable
         }
     }
 
-    public void Dispose() { foreach (var scorer in scorers) scorer.Clear(); scorers.Clear(); Cases.Clear(); Graded.Clear(); }
+    public void Dispose() { foreach (var scorer in scorers) scorer.Clear(); Scenario.ClearCache(); scorers.Clear(); Cases.Clear(); Graded.Clear(); }
 }

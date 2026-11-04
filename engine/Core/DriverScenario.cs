@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using static Tpm.Setup.Core.JsonValues;
@@ -18,6 +19,9 @@ public sealed class DriverScenario
     public double TractionPreference { get; }
     public double WindSpeed { get; }
     public double WindDirection { get; }
+    public int SetupCacheEntries => effects?.Count ?? 0;
+    const int SetupCacheLimit = 2048;
+    Dictionary<SetupPoint, SetupEffects>? effects;
     readonly double[] car;
     readonly FormulaSetup setup;
     readonly TyreGrip[] tyres;
@@ -40,17 +44,36 @@ public sealed class DriverScenario
 
     public double Ceiling(SetupPoint point)
     {
-        var effects = setup.Evaluate(Space.Settings(point));
-        return 85 + .15 * SetupGrading.Preference(effects.Balance, effects.Traction, BalancePreference, TractionPreference);
+        var result = Effects(point);
+        return 85 + .15 * SetupGrading.Preference(result.Balance, result.Traction, BalancePreference, TractionPreference);
     }
 
-    public LapResult Evaluate(int compound, double[] settings, bool includeInputs = false)
+    SetupEffects Effects(SetupPoint point)
     {
-        var effects = setup.Evaluate(settings);
+        // Only compound-independent effects are shared. Grip, laps and grades stay per compound.
+        effects ??= new(SetupCacheLimit);
+        if (!effects.TryGetValue(point, out var result))
+        {
+            // Most random proposals are pruned. Evict derived effects without losing scored laps or RNG state.
+            if (effects.Count == SetupCacheLimit) effects.Clear();
+            effects[point] = result = setup.Evaluate(Space.Settings(point));
+        }
+        return result;
+    }
+
+    public LapResult Evaluate(int compound, SetupPoint point) => Evaluate(compound, Space.Settings(point), Effects(point), false);
+
+    // Guidance keeps its original floating-point settings rather than snapping to search ticks.
+    public LapResult Evaluate(int compound, double[] settings, bool includeInputs = false) => Evaluate(compound, settings, setup.Evaluate(settings), includeInputs);
+
+    LapResult Evaluate(int compound, double[] settings, SetupEffects effects, bool includeInputs)
+    {
         var grip = tyres[compound].Evaluate(effects.TemperatureDelta, car[12] == 1);
         var input = new LapInput(car[0] + effects.Slow / .084375, car[1] + effects.Med / .09375, car[2] + effects.High / .15, 0, car[3] + effects.Straight / .18,
             car[4] + (water > 1 ? car[11] : 0), car[6], car[5] + effects.Acceleration / .015 + 40, car[9], Math.Max(300, car[7]), car[10], 15, 800,
             cornerBonus, brakingBonus, grip.Lateral, grip.Longitudinal, car[8]);
         return new() { Compound = Compounds[compound], Settings = settings, Balance = effects.Balance, Traction = effects.Traction, Temperature = grip.Temperature, Lateral = grip.Lateral, Longitudinal = grip.Longitudinal, Lap = motion.Evaluate(input), Inputs = includeInputs ? input : null };
     }
+
+    public void ClearCache() => effects = null;
 }
