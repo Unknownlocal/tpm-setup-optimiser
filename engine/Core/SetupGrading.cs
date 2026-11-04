@@ -74,21 +74,4 @@ public static class SetupGrading
         return [average, Grade(average)];
     }
 
-    /// <summary>Add preference fit and its best-possible grade score to physical setup rows,
-    /// keeping search pruning on the same rules without another interop call per candidate.</summary>
-    public static double[] Setups(double[] model, double[] tyres, double[] settings, bool protectedTemperature, double preferredBalance, double preferredTraction)
-    {
-        var physical = TyreGrip.Setups(model, tyres, settings, protectedTemperature);
-        // Keep the eleven physical fields, then append preference fit and the score ceiling.
-        var result = new double[physical.Length / 11 * 13];
-        for (int i = 0; i < physical.Length / 11; i++)
-        {
-            var row = physical.AsSpan(i * 11, 11); row.CopyTo(result.AsSpan(i * 13));
-            // Physical fields 6/7 are balance/traction. Even a perfect lap contributes
-            // only 85 points, so this ceiling can reject candidates before simulating a lap.
-            double fit = Preference(row[6], row[7], preferredBalance, preferredTraction);
-            result[i * 13 + 11] = fit; result[i * 13 + 12] = 85 + .15 * fit;
-        }
-        return result;
-    }
 }

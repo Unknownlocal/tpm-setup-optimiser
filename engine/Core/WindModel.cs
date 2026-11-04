@@ -19,7 +19,7 @@ public sealed class WindModel
     public List<double> Sectors { get; } = [];
     readonly record struct Edge(double End, double X, double Y);
 
-    public static WindModel Build(JsonElement source, int seed)
+    public static WindModel Build(JsonElement source, int seed, string? trackId = null, bool? testing = null)
     {
         var result = new WindModel();
         var cfg = At(At(At(source, "definitions"), "config"), "wind");
@@ -30,9 +30,9 @@ public sealed class WindModel
         double[] bounds = range.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined ? [5, 20] : Items(range).Select(value => Number(value)).ToArray();
         if (bounds.Length != 2) throw new ArgumentException("Wind starting speed needs two values.");
         bounds = bounds.Select(value => Clamp(value, 0, max)).Order().ToArray();
-        string id = Text(At(source, "trackId"));
+        string id = trackId ?? Text(At(source, "trackId"));
         if (id.Length == 0) throw new ArgumentException("A circuit identifier is required for the session seed.");
-        string phase = Flag(At(source, "testing")) ? "preseason_testing" : "practice";
+        string phase = (testing ?? Flag(At(source, "testing"))) ? "preseason_testing" : "practice";
         byte[] digest = SHA256.HashData(Encoding.UTF8.GetBytes($"wind-v1:{seed}:{id}:{phase}:0"));
         var random = new GameRandom(BinaryPrimitives.ReadUInt64BigEndian(digest));
         result.Speed = random.Uniform(bounds[0], bounds[1]); result.Direction = random.Uniform(0, 360);

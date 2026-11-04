@@ -15,7 +15,12 @@ public static class ReferenceGuidance
     /// Preserve configured neutral pressures; only pressure grids use integer tenths.</summary>
     public static double[] Bounds(string json)
     {
-        using var document = JsonDocument.Parse(json); var cfg = document.RootElement;
+        using var document = JsonDocument.Parse(json);
+        return Bounds(document.RootElement);
+    }
+
+    public static double[] Bounds(JsonElement cfg)
+    {
         var result = new List<double>(12);
         void Axis(JsonElement axis, bool pressure)
         {

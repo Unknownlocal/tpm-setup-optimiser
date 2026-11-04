@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 
 namespace Tpm.Setup.Core;
 
 /// <summary>Integer-seeded MT19937 and draw rules used by the game's Python runtime.</summary>
 public sealed class GameRandom
 {
-    public const int StateLength = 625, WordBatch = 4096;
     readonly uint[] state = new uint[624];
     int index = 624;
 
@@ -80,22 +78,4 @@ public sealed class GameRandom
         return selected;
     }
 
-    /// <summary>Return a word buffer and its continuation state. No random handles survive a job.</summary>
-    public static double[] Words(string seed, ReadOnlySpan<double> saved)
-    {
-        if (!ulong.TryParse(seed, NumberStyles.None, CultureInfo.InvariantCulture, out ulong value)) throw new ArgumentException("Invalid random seed.");
-        var random = new GameRandom(value);
-        if (!saved.IsEmpty)
-        {
-            if (saved.Length != StateLength) throw new ArgumentException("Invalid random continuation state.");
-            for (int i = 0; i < StateLength; i++)
-                if (!double.IsFinite(saved[i]) || saved[i] != Math.Truncate(saved[i]) || saved[i] < 0 || saved[i] > (i == 624 ? 624 : uint.MaxValue))
-                    throw new ArgumentException("Invalid random continuation value.");
-            for (int i = 0; i < 624; i++) random.state[i] = (uint)saved[i]; random.index = (int)saved[624];
-        }
-        var packet = new double[StateLength + WordBatch];
-        for (int i = 0; i < WordBatch; i++) packet[StateLength + i] = random.NextWord();
-        for (int i = 0; i < 624; i++) packet[i] = random.state[i]; packet[624] = random.index;
-        return packet;
-    }
 }

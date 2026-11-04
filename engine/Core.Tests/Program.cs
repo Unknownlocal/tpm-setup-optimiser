@@ -23,3 +23,4 @@ Console.WriteLine("Core lap checks passed.");
 SavedCarChecks.Run();
 ConditionsChecks.Run();
 GradingChecks.Run();
+SearchChecks.Run();

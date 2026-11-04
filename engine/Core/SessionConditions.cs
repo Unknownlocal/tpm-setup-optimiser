@@ -12,9 +12,14 @@ public static class SessionConditions
     public static double[] Build(string json, double seed)
     {
         int checkedSeed = SessionTemperature.Seed(seed); using var document = JsonDocument.Parse(json);
-        var source = document.RootElement; var constants = At(At(source, "definitions"), "constants");
+        return Build(document.RootElement, checkedSeed);
+    }
+
+    public static double[] Build(JsonElement source, int checkedSeed, string? trackId = null, bool? testing = null)
+    {
+        var constants = At(At(source, "definitions"), "constants");
         var drivers = Items(At(source, "drivers")).ToArray(); var tyres = Items(At(source, "tyres")).ToArray();
-        var wind = WindModel.Build(source, checkedSeed);
+        var wind = WindModel.Build(source, checkedSeed, trackId, testing);
         double level = Clamp(Math.Truncate(Number(At(At(source, "sessionOptions"), "variability_level"), 1)), Number(At(constants, "WEEKEND_CORNERING_VARIABILITY_LEVEL_MIN"), 1), Number(At(constants, "WEEKEND_CORNERING_VARIABILITY_LEVEL_MAX"), 10));
         double span = level * Number(At(constants, "WEEKEND_CORNERING_VARIABILITY_KMH_PER_LEVEL"), .25);
         var random = new GameRandom((ulong)(checkedSeed + 977));

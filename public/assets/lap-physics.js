@@ -1,5 +1,4 @@
 import { ENGINE_VERSION, selfTestPayload } from "./lap-contract.js";
-import { prepareLapRows, packLaps } from "./lap-inputs.js";
 
 let engine;
 export async function loadEngine() {
@@ -11,23 +10,22 @@ export async function loadEngine() {
     const runtime = await dotnet.create();
     const exports = (await runtime.getAssemblyExports(runtime.getConfig().mainAssemblyName)).EngineExports;
     if (exports.ContractVersion() !== ENGINE_VERSION) throw new Error("Incompatible lap-engine version. Reload the page.");
-    if (exports.CarContractVersion() !== 1) throw new Error("Incompatible car-engine version. Reload the page.");
-    if (exports.ConditionsContractVersion() !== 1) throw new Error("Incompatible conditions-engine version. Reload the page.");
-    if (exports.GradingContractVersion() !== 1) throw new Error("Incompatible grading-engine version. Reload the page.");
+    if (exports.SearchContractVersion() !== 1) throw new Error("Incompatible search-engine version. Reload the page.");
     return exports;
   })();
   return engine;
 }
 
-/** Shared .NET lap path for entered setups, references and search candidates. */
+/** Prepared-lap bridge for validation/previews; native jobs evaluate search laps directly. */
 export async function simulateLaps(payload, signal = new AbortController().signal) {
   signal.throwIfAborted();
-  const start = performance.now(), rows = prepareLapRows(payload), contextMs = performance.now() - start;
+  const start = performance.now();
   const exports = await loadEngine(), times = []; let solveMs = 0;
-  for (let index = 0; index < rows.length; index += 16) {
+  if (!Array.isArray(payload.inputs) || payload.inputs.length > 64) throw new Error("A lap batch supports at most 64 prepared inputs.");
+  for (let index = 0; index < payload.inputs.length; index += 16) {
     signal.throwIfAborted();
-    const lapStart = performance.now(), batch = rows.slice(index, index + 16);
-    const solved = Array.from(exports.Evaluate(Array.from(packLaps(batch))));
+    const lapStart = performance.now(), batch = payload.inputs.slice(index, index + 16);
+    const solved = Array.from(exports.EvaluatePrepared(JSON.stringify({ ...payload, inputs: batch })));
     if (solved.length !== batch.length || solved.some(value => !Number.isFinite(value))) throw new Error("Lap physics produced invalid times.");
     times.push(...solved); solveMs += performance.now() - lapStart;
     // Cooperative slices keep Stop responsive even during reference preparation.
@@ -35,7 +33,7 @@ export async function simulateLaps(payload, signal = new AbortController().signa
   }
   signal.throwIfAborted();
   return { version: ENGINE_VERSION, lap_times_s: times,
-    timing_ms: { context: contextMs, solve: solveMs, total: performance.now() - start } };
+    timing_ms: { context: 0, solve: solveMs, total: performance.now() - start } };
 }
 
 export async function lapEngineReadiness() {

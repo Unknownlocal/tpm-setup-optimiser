@@ -4,9 +4,7 @@ using Tpm.Setup.Core;
 /// <summary>Authored equipment and setup cases; no game or user files are needed.</summary>
 static class SavedCarChecks
 {
-    public static void Run()
-    {
-        const string source = """
+    internal const string Source = """
         {
           "calendarYear":2029,
           "teamInputs":{"engineSignatures":["Example Motors"],"part_understanding_laps":{"FW-A":50}},
@@ -34,11 +32,14 @@ static class SavedCarChecks
           ]}]
         }
         """;
+
+    public static void Run()
+    {
         static void Near(double value, double expected)
         {
             if (!double.IsFinite(value) || Math.Abs(value - expected) > 1e-9) throw new Exception($"Saved car: {value} != {expected}");
         }
-        var car = SavedCar.Build(source);
+        var car = SavedCar.Build(Source);
         // Understanding is applied before potential caps; suppliers follow the caps.
         Near(car[1], 20); Near(car[4], 9); Near(car[6], 11); Near(car[9], 70); Near(car[10], 57.37);
         var setup = FormulaSetup.Evaluate(car.AsSpan(1 + SavedCar.ValueLength), [20, 0, 20, 22, 1]);
@@ -46,10 +47,10 @@ static class SavedCarChecks
         for (int i = 0; i < expected.Length; i++) Near(setup[i], expected[i]);
         // Chassis aero efficiency reduces the wing drag penalty, not positive gains.
         Near(FormulaSetup.Evaluate(car.AsSpan(1 + SavedCar.ValueLength), [20, 20, 21, 21, 3])[3], -12);
-        Near(SavedCar.Build(source.Replace("\"condition\":50", "\"condition\":0"))[10], 57.12);
+        Near(SavedCar.Build(Source.Replace("\"condition\":50", "\"condition\":0"))[10], 57.12);
         try
         {
-            SavedCar.Build(source.Replace("\"potential\":", "\"missing_potential\":"));
+            SavedCar.Build(Source.Replace("\"potential\":", "\"missing_potential\":"));
             throw new Exception("Missing chassis potential was accepted.");
         }
         catch (ArgumentException error) when (error.Message.Contains("potential")) { }

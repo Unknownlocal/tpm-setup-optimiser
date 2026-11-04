@@ -41,7 +41,7 @@ public static class TyreGrip
         return (temperature, Clamp(lateral, .35, 1.25), Clamp(longitudinal, .3, 1.25));
     }
 
-    /// <summary>Keep setup and tyre evaluation in one browser interop call per candidate batch.</summary>
+    /// <summary>Apply pressure changes before calculating warmed tyre temperature and grip.</summary>
     public static double[] Setups(ReadOnlySpan<double> setupModel, ReadOnlySpan<double> tyreModel, ReadOnlySpan<double> settings, bool protectedTemperature)
     {
         var setups = FormulaSetup.Evaluate(setupModel, settings);

@@ -15,7 +15,11 @@ public static class SavedCar
     public static double[] Build(string json)
     {
         using var document = JsonDocument.Parse(json);
-        var source = document.RootElement;
+        return Build(document.RootElement);
+    }
+
+    public static double[] Build(JsonElement source)
+    {
         var drivers = Items(At(source, "drivers")).ToArray();
         if (drivers.Length == 0) throw new ArgumentException("A saved car needs a driver entry.");
         var result = new List<double>(1 + RecordLength * drivers.Length) { drivers.Length };

@@ -53,11 +53,10 @@ static class ConditionsChecks
 
         var random = new GameRandom(51);
         Near(random.Random(), .243517762709337);
-        // Continuation must cross word-buffer boundaries without reseeding the stream.
-        var first = GameRandom.Words("51", []);
-        var second = GameRandom.Words("51", first.AsSpan(0, GameRandom.StateLength));
-        Near(first[GameRandom.StateLength], 1045900815);
-        Near(second[GameRandom.StateLength], 3539689165);
+        // A long stream crosses multiple MT state refreshes without reseeding.
+        random = new GameRandom(51); uint word = 0;
+        for (int i = 0; i <= 4096; i++) word = random.NextWord();
+        Near(word, 3539689165);
         Console.WriteLine("Weather, tyre and random checks passed.");
     }
 }
