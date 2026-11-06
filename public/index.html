@@ -10,123 +10,129 @@
 </head>
 <body>
   <main>
-    <header>
-      <p class="eyebrow">TPM SETUP OPTIMISER</p>
-      <h1>Your files. Your browser.</h1>
-      <p>Choose your local game files and find setups for your drivers.</p>
-      <p class="privacy">Read-only access · No uploads · No saved selections</p>
+    <header class="page-header">
+      <p class="eyebrow">TEAM PRINCIPAL · SETUP OPTIMISER</p>
+      <h1>Ready for the next session.</h1>
+      <p class="intro">Choose your save and its data mod. Find a setup for every driver on your team.</p>
+      <p class="privacy">Read-only access · Files stay in your browser · Selections are not saved</p>
     </header>
+    <div class="activity" aria-label="Application status">
+      <div>
+        <p id="status" role="status" aria-live="polite">Loading the calculation engine…</p>
+        <p id="engine-note" class="hint">Getting ready to calculate locally.</p>
+      </div>
+      <div class="actions">
+        <button id="cancel" type="button" class="secondary" disabled>Stop</button>
+        <button id="clear" type="button" class="secondary" disabled>Reset</button>
+      </div>
+    </div>
+    <p id="browser-note" class="notice" hidden></p>
     <section class="panel" aria-labelledby="selection-title">
-      <h2 id="selection-title">Select a data mod</h2>
+      <div class="section-heading"><span class="step" aria-hidden="true">1</span><h2 id="selection-title">Choose your local files</h2></div>
+      <p class="hint">Start with the game folder, then select the data mod used by your save.</p>
       <div class="folder-row">
         <button id="choose-root" type="button" disabled>Choose game folder</button>
         <span id="root-name">No game folder selected</span>
       </div>
-      <p class="hint">Folder pickers may refuse protected installation folders, including Program Files.
-        Drop the folder below if the browser refuses access.</p>
       <div class="drop-targets">
         <div id="drop-root" class="drop-zone" role="group" aria-label="Drop game folder" aria-disabled="true">
-          <strong>Drop game folder here</strong>
-          <span>For folder paths and Workshop title search.</span>
+          <strong>Drop game folder here</strong><span>Find saves and search data mods by name or path.</span>
         </div>
         <div id="drop-mod" class="drop-zone" role="group" aria-label="Drop mod folder" aria-disabled="true">
-          <strong>Drop mod folder here</strong>
-          <span>Inspect one mod directly, including an external mod.</span>
+          <strong>Or drop a data mod folder</strong><span>Use a mod installed separately from the game.</span>
         </div>
       </div>
-      <label for="mod-query">Mod folder, relative path or friendly title</label>
-      <input id="mod-query" maxlength="256" placeholder="Real Names 2026" disabled aria-describedby="query-help">
-      <p id="query-help" class="hint">For example: f1_2026-pfm, data/my-mod, or Real Names 2026.</p>
-      <div class="actions">
-        <button id="inspect" type="button" disabled>Inspect</button>
+      <p class="hint">If a folder picker refuses Program Files, drag the folder from your file manager instead.</p>
+      <label for="mod-query">Data mod name or relative folder path</label>
+      <div class="mod-search">
+        <input id="mod-query" maxlength="256" placeholder="Real Names 2026" disabled aria-describedby="query-help">
+        <button id="inspect" type="button" disabled>Select mod</button>
         <button id="choose-mod" type="button" class="secondary" disabled>Choose mod folder</button>
-        <button id="cancel" type="button" class="secondary" disabled>Cancel</button>
-        <button id="clear" type="button" class="secondary" disabled>Clear</button>
       </div>
-      <p class="hint">Choose mod folder grants separate access to a mod outside the game folder.</p>
-      <p id="browser-note" class="notice" hidden></p>
-      <p id="status" role="status" aria-live="polite">Preparing browser worker…</p>
+      <p id="query-help" class="hint">Examples: Real Names 2026, f1_2026-pfm or data/my-mod. You can also choose a mod folder outside the game.</p>
+      <p id="input-mod" class="selection-note"></p>
       <p id="catalogue-note" class="hint"></p>
       <div id="matches" aria-label="Matching mods"></div>
+      <div class="save-selection">
+        <label for="save-choice">Save from the game folder</label>
+        <select id="save-choice" disabled><option value="">Select a save…</option></select>
+        <p id="save-note" class="hint"></p>
+        <div class="folder-row">
+          <button id="choose-save" type="button" class="secondary" disabled>Choose save file</button><span id="save-name"></span>
+        </div>
+        <input id="save-file" type="file" accept=".json,application/json" hidden>
+        <div id="drop-save" class="drop-zone" role="group" aria-label="Drop save file" aria-disabled="true"><strong>Or drop one JSON save here</strong></div>
+      </div>
     </section>
     <section class="panel" aria-labelledby="input-title">
-      <h2 id="input-title">Find a setup</h2>
-      <p id="engine-note" class="hint">Preparing independent lap engine…</p>
-      <p id="input-mod" class="path"></p>
-      <label for="save-choice">Save from the game folder</label>
-      <select id="save-choice" disabled><option value="">Select a save…</option></select>
-      <p id="save-note" class="hint"></p>
-      <div class="folder-row">
-        <button id="choose-save" type="button" class="secondary" disabled>Choose save file</button>
-        <span id="save-name"></span>
-      </div>
-      <input id="save-file" type="file" accept=".json,application/json" hidden>
-      <div id="drop-save" class="drop-zone" role="group" aria-label="Drop save file" aria-disabled="true">
-        <strong>Or drop one JSON save here</strong>
-      </div>
+      <div class="section-heading"><span class="step" aria-hidden="true">2</span><h2 id="input-title">Set the session conditions</h2></div>
+      <p id="session-summary" class="selection-note">Choose a save and its data mod to detect your team and next event.</p>
       <label for="track-choice">Circuit</label>
       <select id="track-choice" disabled><option value="">Select a circuit…</option></select>
-      <p id="track-note" class="hint">Choose a save and inspect its data mod to default to the next event. You can also choose a circuit manually.</p>
+      <p id="track-note" class="hint">The next event is selected from the save calendar. You can choose another circuit.</p>
       <div class="input-grid">
         <label>Ambient temperature (°C, optional)<input id="ambient" type="number" step="any" placeholder="Generate session average"></label>
-        <label>Water depth (mm)<input id="water" type="number" min="0" max="5" step="any" value="0"></label>
-        <label>Compound codes<input id="input-compounds" value="SMHIW" maxlength="10" aria-describedby="compound-help"></label>
-        <label>Session seed (optional)<input id="session-seed" type="number" min="0" max="999999" step="1" placeholder="Random on each run"></label>
+        <label>Water depth (mm)<input id="water" type="number" min="0" max="5" step="any" value="0" required></label>
+        <label>Tyre compound codes<input id="input-compounds" value="SMHIW" maxlength="10" required aria-describedby="compound-help"></label>
       </div>
-      <p id="compound-help" class="hint">S soft · M medium · H hard · I intermediate · W wet. Leave temperature blank for a generated session average, or enter the game's displayed temperature. Water depth stays at your chosen value.</p>
+      <p id="compound-help" class="hint">S soft · M medium · H hard · I intermediate · W wet. Use SMH for dry compounds. AVG_DRY is included when all three are selected.</p>
+      <p class="hint">Enter the game's displayed temperature, or leave it blank for a generated session average. Water depth 0 means dry; values up to 5 mm are supported.</p>
       <details>
-        <summary>Setup to grade or start from</summary>
+        <summary>Entered setup</summary>
+        <p class="hint">Grade these values directly, or use them as a starting point when finding setups.</p>
         <div id="setup-fields" class="input-grid"></div>
         <p class="hint">Front pressure applies to both front tyres; rear pressure applies to both rear tyres.</p>
       </details>
       <details>
-        <summary>Search limits</summary>
+        <summary>Advanced search settings</summary>
         <div class="input-grid">
-          <label>Search seconds<input id="search-seconds" type="number" min="0.1" max="300" step="any" value="15"></label>
-          <label>Refinement laps after S+<input id="search-refine" type="number" min="2" step="1" value="500"></label>
-          <label>Stall laps<input id="search-stall" type="number" min="1" step="1" value="100"></label>
-          <label>Idle batches<input id="search-idle" type="number" min="1" step="1" value="64"></label>
+          <label>Session seed (optional)<input id="session-seed" type="number" min="0" max="999999" step="1" placeholder="Random on each run"></label>
+          <label>Search time limit (seconds)<input id="search-seconds" type="number" min="0.1" max="300" step="any" value="15" required></label>
+          <label>Refinement laps after S+<input id="search-refine" type="number" min="2" max="100000" step="1" value="500" required></label>
+          <label>Laps without improvement<input id="search-stall" type="number" min="1" max="100000" step="1" value="100" required></label>
+          <label>Batches without new laps<input id="search-idle" type="number" min="1" max="100000" step="1" value="64" required></label>
         </div>
-        <p class="hint">The search timer starts after every entry has complete reference setups and initial results.
-          Refinement counts new simulated laps; a cumulative 0.01-point gain resets the stall count.
-          Limits are checked after batches. Cancel keeps the best complete results.</p>
+        <p class="hint">A fixed seed repeats the scenario and search proposals. The search timer starts after reference setups are ready; preparation takes additional time.</p>
+        <p class="hint">After the first S+, refinement counts newly simulated laps. A cumulative 0.01-point gain resets the no-improvement count. Limits are checked after batches. Stop keeps completed results.</p>
       </details>
-      <button id="search-setups" type="button" disabled>Find setups</button>
-      <button id="prepare-inputs" type="button" disabled>Grade setup</button>
-      <p class="hint">Find setups searches for better settings. Grade setup evaluates only the values you entered above.</p>
-    </section>
-    <section id="input-results" class="panel" aria-labelledby="input-result-title" hidden>
-      <h2 id="input-result-title">Setups, grades and predicted laps</h2>
-      <p id="input-summary"></p>
-      <p class="notice">Experimental preview for standard cars with fitted chassis baseline snapshots. Uses fitted development gains, part understanding and chassis limits.
-        Matches the desktop adapter's practice defaults: fresh, fully warmed tyres, 15 kg fuel, push pace,
-        medium engine, balanced spec ERS and neutral tyre-supplier bonuses. No traffic, tyre wear or DRS.
-        Grades combine 85% predicted pace and 15% driver preference fit. S+ starts at 98/100.
-        AVG_DRY assesses one shared setup separately on S/M/H, then averages those scores.
-        Search results are the best found within the limits. Preparation is included in total time and excluded from the search timer.</p>
-      <div id="input-details"></div>
-    </section>
-    <section id="results" class="panel" aria-labelledby="results-title" hidden>
-      <h2 id="results-title">Inspection results</h2>
-      <p id="mod-location" class="path"></p>
-      <dl class="summary">
-        <div><dt>Files inspected</dt><dd id="file-count"></dd></div>
-        <div><dt>Total size</dt><dd id="total-size"></dd></div>
-        <div><dt>Processed by</dt><dd>Browser worker</dd></div>
-      </dl>
-      <p id="extensions" class="hint"></p>
-      <p id="limits" class="notice" hidden></p>
-      <div class="table-wrap">
-        <table>
-          <caption>File metadata — up to 100 rows, sorted by relative path</caption>
-          <thead><tr><th scope="col">File</th><th scope="col">Type</th><th scope="col">Size</th><th scope="col">Last modified</th></tr></thead>
-          <tbody id="files"></tbody>
-        </table>
+      <div class="calculation-actions">
+        <div><button id="search-setups" type="button" disabled>Find setups</button><p class="hint">Search for better settings for each driver and compound.</p></div>
+        <div><button id="prepare-inputs" type="button" class="secondary" disabled>Grade entered setup</button><p class="hint">Score the entered values without searching for improvements.</p></div>
       </div>
     </section>
-    <footer>Selected saves, circuits and calculation definitions are parsed locally in a browser worker.
-      Python constants are read as literal data. File contents are never executed or sent to a server.
-      Local diagnostic JSON is printed in the browser console for copying.</footer>
+    <section id="input-results" class="panel results-panel" aria-labelledby="input-result-title" hidden>
+      <div class="section-heading"><span class="step" aria-hidden="true">3</span><h2 id="input-result-title" tabindex="-1">Your setups</h2></div>
+      <p id="input-summary" class="selection-note"></p>
+      <p id="run-summary"></p>
+      <p id="run-error" class="notice" role="alert" hidden></p>
+      <p class="hint">Grades and lap times estimate fully warmed tyres. The game's nominal setup panel can show a different grade.</p>
+      <div class="actions export-actions">
+        <button id="copy-results" type="button" class="secondary" disabled>Copy results</button>
+        <button id="download-results" type="button" class="secondary" disabled>Download results (.txt)</button>
+      </div>
+      <p id="export-note" class="hint" role="status"></p>
+      <details id="export-text"><summary>View results as text</summary><label for="result-text" class="visually-hidden">Results to copy</label><textarea id="result-text" readonly rows="12" spellcheck="false"></textarea></details>
+      <div id="input-details"></div>
+      <details class="assumptions">
+        <summary>How to read these estimates</summary>
+        <p>Grades combine 85% predicted pace and 15% driver preference fit. S+ starts at 98/100. AVG_DRY uses one shared setup and scores it separately on soft, medium and hard tyres.</p>
+        <p>Uses the parts fitted in the save, including development gains, understanding and chassis limits. Future development is not simulated. Supported saves use Formula entries, a standard car profile and fitted chassis baseline snapshots.</p>
+        <p>Lap estimates use fresh, fully warmed tyres, 15 kg fuel, push pace, medium engine, balanced spec ERS and neutral tyre-supplier bonuses. Traffic, tyre wear and DRS are excluded.</p>
+      </details>
+    </section>
+    <details id="results" class="panel inspection-panel" hidden>
+      <summary id="results-title">Data mod file inspection</summary>
+      <p id="mod-location" class="path"></p>
+      <dl class="summary"><div><dt>Files inspected</dt><dd id="file-count"></dd></div><div><dt>Total size</dt><dd id="total-size"></dd></div></dl>
+      <p id="extensions" class="hint"></p><p id="limits" class="notice" hidden></p>
+      <div class="table-wrap"><table>
+        <caption>File metadata · up to 100 rows, sorted by relative path</caption>
+        <thead><tr><th scope="col">File</th><th scope="col">Type</th><th scope="col">Size</th><th scope="col">Last modified</th></tr></thead>
+        <tbody id="files"></tbody>
+      </table></div>
+    </details>
+    <footer>Files are read locally and are never uploaded or executed. Reset clears the app's file selections and results.
+      Diagnostic JSON stays in the browser console for copying when needed.</footer>
     <noscript>JavaScript is needed to read local files and calculate setups in your browser.</noscript>
   </main>
 </body>

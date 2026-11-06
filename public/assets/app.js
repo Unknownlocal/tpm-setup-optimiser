@@ -16,6 +16,7 @@ const search = createSearchPool();
 const inputs = createInputPanel(ui, { job, request, invalidate, search, isReady: () => ready, isBusy: () => busy });
 
 function controls() {
+  ui.status.closest(".activity").dataset.busy = String(busy);
   ui["choose-root"].disabled = !ready || !supported;
   ui["choose-mod"].disabled = !ready || !supported;
   ui["mod-query"].disabled = !ready || !root;
@@ -89,7 +90,7 @@ worker.onmessage = async ({ data }) => {
       ? "Ready. Drop your game folder or a mod folder to begin."
       : "This browser does not support local folder selection or folder drops.";
     controls();
-    ui["engine-note"].textContent = ".NET 10 lap engine loaded and self-test passed. Grading and search are ready.";
+    ui["engine-note"].textContent = "Calculation engine ready. Grading and search run in your browser.";
     write_log("ready", { folder_picker: supported, folder_drop: dropSupported, lap_engine: engines[0], search_workers: search.size });
     return;
   }
@@ -167,7 +168,7 @@ async function selectFolder(folder, isRoot, signal) {
     external = folder;
     inputs.resetMod();
     ui["mod-query"].value = folder.name;
-    ui.status.textContent = `Separate folder selected: ${folder.name}. Click Inspect.`;
+    ui.status.textContent = `Separate folder selected: ${folder.name}. Click Select mod.`;
   }
   write_log("folder_selected", { role: isRoot ? "game_root" : "data_mod", name: folder.name });
 }
@@ -258,7 +259,9 @@ ui.clear.onclick = () => {
   inputs.clear();
   ui["root-name"].textContent = "No game folder selected";
   ui["mod-query"].value = "";
-  ui.status.textContent = "Selection and results cleared.";
+  for (const control of document.querySelectorAll("input:not([type=file])")) control.value = control.defaultValue;
+  for (const section of document.querySelectorAll("details")) section.open = false;
+  ui.status.textContent = "Files and results cleared. Ready for a new session.";
   write_log("cleared");
   controls();
 };

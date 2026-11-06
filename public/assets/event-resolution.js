@@ -23,6 +23,9 @@ export async function resolveDefaultCircuit({ saveFile, testFile }) {
   if (typeof track !== "string" || !track.trim() || track.length > 128 || /[\\/:\u0000]/u.test(track) || [".", ".."].includes(track)) {
     throw new Error("The scheduled circuit identifier is unsupported. Select a circuit manually.");
   }
+  // Reuse this parse for the session summary; no second save read is needed for team/season labels.
   return { saved_week: save.week_index + 1, event_week: index + 1, track_id: track,
+    team: typeof save.player_team === "string" ? save.player_team : null,
+    season: Number.isInteger(save.season_no) ? save.season_no : null,
     testing, test_ordinal: testing ? ordinal + 1 : null, test_rotation_length: rotationLength };
 }

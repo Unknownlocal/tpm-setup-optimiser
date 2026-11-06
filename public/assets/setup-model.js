@@ -25,5 +25,7 @@ export function resolveSetupAxes(model, config) {
 }
 
 export function settingText(axis, value) {
-  return `${value.toFixed(axis.decimals)}${axis.unit ? ` ${axis.unit}` : ""}`;
+  const rounded = value.toFixed(axis.decimals);
+  // Preserve valid mod-specific precision, while hiding insignificant floating-point noise.
+  return `${Math.abs(Number(rounded) - value) > 1e-7 ? String(value) : rounded}${axis.unit ? ` ${axis.unit}` : ""}`;
 }
