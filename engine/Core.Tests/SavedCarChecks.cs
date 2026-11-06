@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Nodes;
 using Tpm.Setup.Core;
 
 /// <summary>Authored equipment and setup cases; no game or user files are needed.</summary>
@@ -55,6 +56,27 @@ static class SavedCarChecks
             throw new Exception("Missing chassis potential was accepted.");
         }
         catch (ArgumentException error) when (error.Message.Contains("potential")) { }
+        SeasonalSnapshot();
         Console.WriteLine("Saved-car and setup checks passed.");
+    }
+
+    static void SeasonalSnapshot()
+    {
+        var source = JsonNode.Parse(Source)!;
+        var parts = source["drivers"]![0]!["parts"]!.AsArray();
+        var chassis = parts[0]!["item"]!.AsObject();
+        var effect = chassis["effect"]!.DeepClone();
+        chassis.Remove("effect"); chassis["name"] = "Friendly Snapshot";
+        parts.RemoveAt(1); // Isolate chassis inheritance from the front-wing development gain.
+        effect["seasonal_package"] = true;
+        effect["rating_effects"] = JsonNode.Parse("""{"slow":10}""");
+        source["teamInputs"]!["chassis_designs"] = new JsonArray(
+            JsonNode.Parse("""{"year":2029,"index":1,"name":"Previous Chassis","effect":{"rating_effects":{"slow":4}}}"""),
+            new JsonObject { ["year"] = 2029, ["index"] = 2, ["name"] = "Friendly Snapshot", ["effect"] = effect });
+
+        // Previous gains survive fully; the new six-point step starts at half understanding.
+        if (SavedCar.Build(source.ToJsonString())[1] != 17) throw new Exception("Design snapshot lost previous seasonal development.");
+        chassis["design_id"] = null;
+        if (SavedCar.Build(source.ToJsonString())[1] != 15) throw new Exception("An explicit null design ID incorrectly inherited a design identity.");
     }
 }
