@@ -27,6 +27,13 @@ Open http://127.0.0.1:5080. Choose or drop the game folder, select the save's da
 mod and a save, then check the circuit and conditions. **Find setups** searches;
 **Grade entered setup** scores the entered settings. Copy/download stays local.
 Firefox uses folder drops; browsers with a directory picker can also use it.
+The save list is filtered by the selected mod folder's identifier in `data_pack`.
+When the scan finishes, the most recently modified matching save is selected
+unless you have already chosen or cleared a save yourself.
+Scanning runs locally in the background and can be stopped; selecting the mod
+again finishes the scan using cached metadata. A manually chosen save must match
+the mod too. Tyre checkboxes come from that mod's definitions, with all selected
+initially. AVG_DRY is included when soft, medium and hard are selected.
 
 Saves must use schema version 3, Formula entries, the standard car profile and
 fitted chassis baseline snapshots. The data mod must match the save. The build
@@ -39,9 +46,12 @@ unit for spec rules, or no assistance when banned. The selected mod must include
 Each projected lap starts charged. Battery depletion across laps and failures
 are not simulated.
 
-The GitHub build workflow checks the core and produces the same output on pull
-requests or manual runs, using .NET SDK 10.0.403. It does not deploy. Extract its
+The GitHub build workflow checks local selection behaviour and calculations,
+then builds this bundle on pull requests or manual runs, using .NET SDK 10.0.403.
+It does not deploy. Extract its
 `vercel-output` artifact into `.vercel/output` to inspect that build.
+The small selection checks can also run locally with Node 24:
+`node --test tests/local-selection.test.mjs`. Tests are excluded from the bundle.
 
 When a deployment is wanted, link the intended Vercel project and use
 `vercel deploy --prebuilt` from this folder. Review the project/environment first;

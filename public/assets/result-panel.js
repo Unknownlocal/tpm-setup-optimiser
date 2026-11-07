@@ -39,7 +39,7 @@ export function renderResults(ui, result, { validation, diagnostics = true }) {
       const average = row.compound === "avg_dry";
       const card = element("section", undefined, "compound-result"); card.dataset.compound = row.compound;
       const heading = element("div", undefined, "compound-heading");
-      heading.append(element("h2", `${row.driver} | ${compoundName(row.compound)}`), element("span", row.grade, "grade")); card.append(heading);
+      heading.append(element("h2", `${row.driver} | ${compoundName(row.compound, input)}`), element("span", row.grade, "grade")); card.append(heading);
       const metrics = element("dl", undefined, "lap-summary");
       metric(metrics, average ? "Average setup rating" : "Setup rating", `${row.score.toFixed(2)}/100`);
       if (!average) metric(metrics, "Predicted lap", lapTime(row.lap_time_s));
@@ -50,7 +50,7 @@ export function renderResults(ui, result, { validation, diagnostics = true }) {
         for (const label of ["Compound", "Rating /100", "Predicted lap"]) { const cell = element("th", label); cell.scope = "col"; header.append(cell); }
         head.append(header); table.append(head, body);
         for (const name of DRY_COMPOUNDS) {
-          const line = element("tr"), label = element("th", compoundName(name)); label.scope = "row";
+          const line = element("tr"), label = element("th", compoundName(name, input)); label.scope = "row";
           line.append(label, element("td", row.compound_scores[name].toFixed(2)), element("td", lapTime(row.compound_lap_times_s[name]))); body.append(line);
         }
         card.append(table);

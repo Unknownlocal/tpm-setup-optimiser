@@ -1,9 +1,9 @@
 import { parseConstants } from "./python-literals.js";
 import { setupModel, resolveSetupAxes } from "./setup-model.js";
+import { compoundOptions } from "./compounds.js";
 
 export const DEFINITION_FILES = ["config.json", "tyremodel.json", "parts.json", "car_parts.json",
   "car_concepts.json", "engines.json", "ers_development.json", "regulations.json", "options.json", "constants.py"];
-const COMPOUNDS = { S: "soft", M: "medium", H: "hard", I: "intermediate", W: "wet" };
 
 function requireValue(condition, message) {
   if (!condition) throw new Error(message);
@@ -156,11 +156,13 @@ function driverInputs(save, team, definitions) {
 }
 
 /** Read local source data. Keep unrelated save and options fields out of the result. */
-export async function prepareInputs({ saveFile, trackFile, files, weather, settings, compounds }) {
+export async function prepareInputs({ saveFile, trackFile, files, weather, settings, compounds, dataPack }) {
   object(files, "Definition files");
   const total = saveFile?.size + trackFile?.size + Object.values(files).reduce((sum, file) => sum + file.size, 0);
   requireValue(total <= 96 * 1024 * 1024, "Selected input files exceed 96 MiB.");
   const save = object(await readJson(saveFile, "Save", 64 * 1024 * 1024), "Save");
+  text(save.data_pack, "Saved data pack");
+  requireValue(typeof dataPack === "string" && dataPack === save.data_pack, `This save uses data mod "${save.data_pack}"; select that mod folder.`);
   requireValue(save.schema_version === 3, "Only schema-version 3 saves are currently supported.");
   const model = setupModel(save.game_mode || "formula");
   const teamName = text(save.player_team, "Player team");
@@ -193,9 +195,8 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
   }
   wearMultiplier = Math.max(0.5, Math.min(2, number(wearMultiplier, "Tyre wear multiplier")));
   const available = object(definitions.tyremodel.compounds, "Tyre compound definitions");
-  const codes = [...new Set(text(compounds, "Compound codes").toUpperCase())];
-  requireValue(codes.every(code => Object.hasOwn(COMPOUNDS, code)), "Use compound codes S, M, H, I or W.");
-  const tyres = Object.entries(COMPOUNDS).filter(([code]) => codes.includes(code)).map(([, name]) => {
+  requireValue(Array.isArray(compounds) && compounds.length > 0 && compounds.every(name => typeof name === "string" && Object.hasOwn(available, name)), "Select at least one available tyre compound.");
+  const tyres = compoundOptions(definitions.tyremodel).filter(({ id }) => compounds.includes(id)).map(({ id: name, label }) => {
     const compound = object(available[name], `Compound ${name}`);
     number(compound.lat_grip_base, `${name} lateral grip`, Number.MIN_VALUE);
     number(compound.long_grip_base, `${name} longitudinal grip`, Number.MIN_VALUE);
@@ -211,7 +212,7 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
     requireValue(window.length === 2, `${name} temperature window needs two values.`);
     number(window[0], `${name} minimum temperature`); number(window[1], `${name} maximum temperature`, window[0]);
     const base = number(compound.wear_rate_base, `${name} base wear`, 0);
-    return { ...compound, name, wear_rate_base: wearMultiplier === 1 ? base
+    return { ...compound, name, display_name: label, wear_rate_base: wearMultiplier === 1 ? base
       : Math.max(0.001, Math.min(0.2, base * wearMultiplier)) };
   });
   const drivers = driverInputs(save, team, definitions);

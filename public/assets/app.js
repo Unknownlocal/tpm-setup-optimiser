@@ -21,7 +21,6 @@ function controls() {
   ui["choose-mod"].disabled = !ready || !supported;
   ui["mod-query"].disabled = !ready || !root;
   ui.inspect.disabled = !ready || busy || (!external && (!root || !ui["mod-query"].value.trim()));
-  ui.cancel.disabled = !busy;
   ui.clear.disabled = !ready || (!supported && !dropSupported);
   for (const id of ["drop-root", "drop-mod"]) ui[id].setAttribute("aria-disabled", String(!ready || !dropSupported));
   inputs.refreshControls();
@@ -57,7 +56,7 @@ async function job(action) {
       write_log("operation_failed", { name: error.name, message: ui.status.textContent });
     }
   } finally {
-    if (signal === controller.signal) { busy = false; controls(); }
+    if (signal === controller.signal) { busy = false; controls(); inputs.selectDefaultSave(); }
   }
 }
 
@@ -106,6 +105,7 @@ worker.onmessage = async ({ data }) => {
 worker.onerror = event => {
   event.preventDefault();
   ready = false;
+  inputs.stopScan();
   invalidate();
   ui.status.textContent = "The browser worker could not run. Reload this page to retry.";
   ui["engine-note"].textContent = "Lap engine unavailable.";
@@ -250,7 +250,9 @@ ui["mod-query"].oninput = () => {
   controls();
 };
 ui.cancel.onclick = () => {
+  const stoppedScan = inputs.stopScan();
   if (search.cancel()) { ui.status.textContent = "Stopping calculations; keeping completed results…"; write_log("search_stop_requested"); return; }
+  if (stoppedScan && !busy) { ui.status.textContent = "Save scan stopped. Matching saves found so far remain available."; write_log("save_scan_stopped"); return; }
   invalidate(); ui.status.textContent = "Operation cancelled."; write_log("cancelled");
 };
 ui.clear.onclick = () => {
@@ -259,7 +261,7 @@ ui.clear.onclick = () => {
   inputs.clear();
   ui["root-name"].textContent = "No game folder selected";
   ui["mod-query"].value = "";
-  for (const control of document.querySelectorAll("input:not([type=file])")) control.value = control.defaultValue;
+  for (const control of document.querySelectorAll("input:not([type=file]):not([type=checkbox])")) control.value = control.defaultValue;
   for (const section of document.querySelectorAll("details")) section.open = false;
   ui.status.textContent = "Files and results cleared. Ready for a new session.";
   write_log("cleared");

@@ -1,7 +1,7 @@
 import { settingText } from "./setup-model.js";
 
-export const DRY_COMPOUNDS = ["soft", "medium", "hard"];
-export const compoundName = compound => compound.toUpperCase();
+import { DRY_COMPOUNDS, compoundName } from "./compounds.js";
+export { DRY_COMPOUNDS, compoundName };
 
 export function equipmentSummary(input) {
   const policy = input.activePolicies.ers;
@@ -31,9 +31,9 @@ export function resultsText(result) {
     equipmentSummary(input), runSummary(result), ""];
   for (const row of result.grading.rows) {
     const average = row.compound === "avg_dry";
-    const scores = average ? DRY_COMPOUNDS.map(name => `${compoundName(name)} ${row.compound_scores[name].toFixed(2)}`).join(" | ") : row.score.toFixed(2);
-    const times = average ? DRY_COMPOUNDS.map(name => `${compoundName(name)} ${lapTime(row.compound_lap_times_s[name])}`).join(" | ") : lapTime(row.lap_time_s);
-    lines.push(`${row.driver} | ${compoundName(row.compound)} | ${row.grade} (${scores}/100) | ${times}`);
+    const scores = average ? DRY_COMPOUNDS.map(name => `${compoundName(name, input)} ${row.compound_scores[name].toFixed(2)}`).join(" | ") : row.score.toFixed(2);
+    const times = average ? DRY_COMPOUNDS.map(name => `${compoundName(name, input)} ${lapTime(row.compound_lap_times_s[name])}`).join(" | ") : lapTime(row.lap_time_s);
+    lines.push(`${row.driver} | ${compoundName(row.compound, input)} | ${row.grade} (${scores}/100) | ${times}`);
     for (const axis of input.setupAxes) lines.push(`  ${axis.label}: ${settingText(axis, (row.settings || input.settings)[axis.key])}`);
     lines.push("");
   }

@@ -196,7 +196,7 @@ label {
   font-size: .9rem;
 }
 
-input:not([type=file]),
+input:not([type=file]):not([type=checkbox]),
 select,
 textarea {
   width: 100%;
@@ -232,6 +232,45 @@ textarea {
 
 .input-grid input {
   margin-top: 7px;
+}
+
+fieldset {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 20px 0 8px;
+}
+
+legend {
+  font-size: .9rem;
+  font-weight: 650;
+  padding: 0 6px;
+}
+
+.compound-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.compound-choices label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--control);
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.compound-choices input {
+  flex: 0 0 auto;
+  accent-color: var(--text);
 }
 
 .calculation-actions {

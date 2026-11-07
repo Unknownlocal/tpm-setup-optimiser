@@ -21,7 +21,7 @@ MANIFEST = ROOT / "build/release-manifest.json"
 APP_FILES = (
     "index.html", "favicon.ico", "assets/style.css",
     *(f"assets/{name}.js" for name in (
-        "app", "debug-log", "event-resolution", "folder-access", "input-panel",
+        "app", "compounds", "compound-selection", "save-catalogue", "debug-log", "event-resolution", "folder-access", "input-panel",
         "input-preparation", "lap-contract", "lap-physics", "metadata-worker",
         "mod-resolver", "python-literals", "result-export", "result-format",
         "result-panel", "search-pool", "search-settings", "search-worker",

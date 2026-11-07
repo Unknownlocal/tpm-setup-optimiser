@@ -4,11 +4,20 @@ import { renderResults } from "./result-panel.js";
 import { setupModel } from "./setup-model.js";
 import { createResultExport } from "./result-export.js";
 import { searchLimits } from "./search-settings.js";
+import { createSaveCatalogue } from "./save-catalogue.js";
+import { createCompoundSelection } from "./compound-selection.js";
+import { compoundName } from "./compounds.js";
 
 /** Keep local file selections in memory and display the worker's checked source inputs. */
 export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy, search }) {
-  let mod = null, save = null, calendarDefault = null, preparationSignal = null;
-  const saves = new Map(), tracks = new Map();
+  let mod = null, save = null, savePack = null, calendarDefault = null, preparationSignal = null, listedPack = null;
+  let defaultSave = null, saveChosen = false;
+  const tracks = new Map();
+  const catalogue = createSaveCatalogue(request, updateSaves);
+  const compounds = createCompoundSelection(ui, () => {
+    if (preparationSignal && !preparationSignal.aborted) invalidate(); else clearResult();
+    refreshControls();
+  });
   const setupAxes = setupModel("formula").axes;
   const exports = createResultExport(ui);
   for (const axis of setupAxes) {
@@ -30,12 +39,45 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     exports.clear();
   }
   function showResult(result, options) { renderResults(ui, result, options); exports.setResult(result); }
+  function updateSaves(state) {
+    if (listedPack !== state.pack || state.matches.size < ui["save-choice"].options.length - 1) {
+      listedPack = state.pack;
+      options(ui["save-choice"], state.pack ? "Select a matching save…" : "Select a data mod first…");
+    }
+    const shown = new Set([...ui["save-choice"].options].map(option => option.value));
+    for (const name of state.matches.keys()) if (!shown.has(name)) ui["save-choice"].add(new Option(name, name));
+    ui["save-choice"].value = save && state.matches.get(save.name) === save ? save.name : "";
+    ui["save-note"].textContent = !state.pack ? `${state.total} saves found. Select a data mod to filter them, or choose one JSON save.`
+      : `${state.matches.size} matching saves; ${state.checked}/${state.total} checked.${state.unreadable ? ` ${state.unreadable} unreadable or missing a pack identifier.` : ""}${state.scanning ? " Checking locally in the background…" : !state.complete && state.checked < state.total ? " Scan stopped. Select the mod again to check the rest." : ""}`;
+    if (state.complete && !save && !saveChosen) defaultSave = state.latest;
+    refreshControls();
+    selectDefaultSave();
+  }
+  function saveWarning(message = "") {
+    ui["save-error"].hidden = !message; ui["save-error"].textContent = message;
+  }
+  function clearSave() {
+    save = savePack = calendarDefault = null;
+    ui["save-name"].textContent = ""; ui["save-choice"].value = ui["track-choice"].value = "";
+    ui["session-summary"].textContent = "Select a save to detect the next session.";
+    ui["track-note"].textContent = "Select a save to choose the calendar default.";
+  }
   function refreshControls() {
     ui["choose-save"].disabled = !isReady();
-    ui["save-choice"].disabled = !isReady() || !saves.size;
+    ui["save-choice"].disabled = !isReady() || !catalogue.matches.size;
     ui["track-choice"].disabled = !isReady() || !tracks.size;
-    ui["search-setups"].disabled = ui["prepare-inputs"].disabled = !isReady() || isBusy() || !save || !mod || !ui["track-choice"].value;
+    ui["search-setups"].disabled = ui["prepare-inputs"].disabled = !isReady() || isBusy() || !save || !mod || !ui["track-choice"].value || !compounds.values().length;
+    compounds.enable(isReady() && mod !== null);
+    // Stop also covers background metadata work, independently of calculations.
+    ui.cancel.disabled = !isBusy() && !catalogue.scanning;
     ui["drop-save"].setAttribute("aria-disabled", String(!isReady()));
+  }
+  function selectDefaultSave() {
+    // Wait for the whole scan and any foreground job; never replace a user's choice.
+    if (defaultSave && !saveChosen && isReady() && !isBusy()) {
+      const file = defaultSave; defaultSave = null;
+      job(signal => selectSave(file, signal));
+    }
   }
   async function filesIn(folder, limit, signal) {
     const files = new Map(); let seen = 0;
@@ -54,9 +96,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     clear();
     try {
       const found = await filesIn(await folder.directory("saves"), 500, signal);
-      for (const entry of found) saves.set(...entry);
-      options(ui["save-choice"], "Select a save…", [...saves.keys()].sort().map(name => [name, name]));
-      ui["save-note"].textContent = `${saves.size} saves found. You can also choose or drop one JSON save.`;
+      catalogue.setFiles(found);
     } catch (error) {
       signal.throwIfAborted();
       ui["save-note"].textContent = "Could not list saves in this root. Choose or drop a JSON save instead.";
@@ -64,22 +104,32 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     refreshControls();
   }
   async function setMod(folder, label, signal) {
-    mod = calendarDefault = null; tracks.clear(); clearResult();
+    resetMod();
     options(ui["track-choice"], "Reading circuit names…");
     ui["input-mod"].textContent = label;
     try {
       const found = await filesIn(await folder.directory("tracks"), 128, signal);
-      const catalogue = await request("track-options", [...found].map(([name, file]) => ({ name, file })), signal);
+      const trackCatalogue = await request("track-options", [...found].map(([name, file]) => ({ name, file })), signal);
       signal.throwIfAborted();
-      for (const option of catalogue.options) tracks.set(option.file, found.get(option.file));
-      options(ui["track-choice"], "Select a circuit…", catalogue.options.map(option => [option.file, option.name]));
-      ui["track-note"].textContent = `${tracks.size} circuits available.${catalogue.errors.length ? ` ${catalogue.errors.length} unreadable circuit files were skipped.` : ""}`;
+      for (const option of trackCatalogue.options) tracks.set(option.file, found.get(option.file));
+      options(ui["track-choice"], "Select a circuit…", trackCatalogue.options.map(option => [option.file, option.name]));
+      ui["track-note"].textContent = `${tracks.size} circuits available.${trackCatalogue.errors.length ? ` ${trackCatalogue.errors.length} unreadable circuit files were skipped.` : ""}`;
+      const available = await request("compound-options", await folder.file("tyremodel.json"), signal);
+      signal.throwIfAborted();
       mod = folder;
+      compounds.set(available);
+      if (save && savePack !== folder.name) {
+        saveWarning(`Cleared ${save.name}: it uses data mod "${savePack}", while the selected folder is "${folder.name}".`);
+        clearSave();
+      }
+      // The resolved folder identifier is the game's data_pack value, not a fuzzy title.
+      catalogue.filter(folder.name);
       await defaultCircuit(signal);
       signal.throwIfAborted();
     } catch (error) {
       signal.throwIfAborted();
       // Metadata inspection remains useful for folders without circuit definitions.
+      tracks.clear(); compounds.set();
       options(ui["track-choice"], "No circuits available");
       ui["track-note"].textContent = `Input preparation is unavailable for this folder: ${error.message}`;
     }
@@ -115,10 +165,18 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     }
   }
   async function selectSave(file, signal) {
+    saveChosen = true; defaultSave = null;
     if (!file || !file.name.toLowerCase().endsWith(".json")) throw new Error("Choose or drop one JSON save file.");
-    save = file;
+    clearSave(); saveWarning(); refreshControls();
+    let summary;
+    try {
+      summary = await catalogue.summary(file, signal);
+      signal.throwIfAborted();
+      if (mod && summary.pack !== mod.name) throw new Error(`This save uses data mod "${summary.pack}"; the selected folder is "${mod.name}". Select the matching mod.`);
+    } catch (error) { if (!signal.aborted) saveWarning(error.message); throw error; }
+    save = file; savePack = summary.pack;
     ui["save-name"].textContent = file.name;
-    ui["save-choice"].value = saves.get(file.name) === file ? file.name : "";
+    ui["save-choice"].value = catalogue.matches.get(file.name) === file ? file.name : "";
     ui.status.textContent = "Checking the save's next event…";
     write_log("save_selected", { name: file.name, bytes: file.size });
     await defaultCircuit(signal);
@@ -127,16 +185,19 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     refreshControls();
   }
   function clear() {
-    mod = save = calendarDefault = preparationSignal = null;
-    saves.clear(); tracks.clear(); clearResult();
-    options(ui["save-choice"], "Select a save…");
+    defaultSave = null; saveChosen = false;
+    mod = save = savePack = calendarDefault = preparationSignal = null;
+    catalogue.setFiles(); compounds.set(); tracks.clear(); clearResult(); saveWarning();
+    options(ui["save-choice"], "Select a data mod first…");
     options(ui["track-choice"], "Select a circuit…");
     for (const key of ["save-name", "save-note", "track-note", "input-mod"]) ui[key].textContent = "";
     ui["session-summary"].textContent = "Choose a save and its data mod to detect your team and next event.";
     refreshControls();
   }
   function resetMod() {
+    defaultSave = null; saveChosen = false;
     mod = calendarDefault = null; tracks.clear(); clearResult();
+    catalogue.filter(null); compounds.set(); saveWarning();
     options(ui["track-choice"], "Select a circuit…");
     ui["track-note"].textContent = ui["input-mod"].textContent = "";
     ui["session-summary"].textContent = "Select the data mod used by your save.";
@@ -148,13 +209,12 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     if (file) job(signal => selectSave(file, signal));
   };
   ui["save-choice"].onchange = () => {
-    const file = saves.get(ui["save-choice"].value);
+    const file = catalogue.matches.get(ui["save-choice"].value);
     job(async signal => {
       if (file) await selectSave(file, signal);
       else {
-        save = calendarDefault = null; ui["save-name"].textContent = "";
-        ui["session-summary"].textContent = "Select a save to detect the next session.";
-        ui["track-note"].textContent = "Select a save to choose the calendar default.";
+        saveChosen = true; defaultSave = null;
+        clearSave(); saveWarning();
         write_log("save_cleared");
       }
     });
@@ -170,7 +230,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       await selectSave(files[0], signal);
     });
   };
-  for (const key of ["ambient", "water", "input-compounds", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", ...setupAxes.map(axis => axis.control)]) {
+  for (const key of ["ambient", "water", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", ...setupAxes.map(axis => axis.control)]) {
     ui[key].oninput = () => {
       // Scenario edits invalidate validation results, but folder/calendar work can finish.
       if (preparationSignal && !preparationSignal.aborted) invalidate();
@@ -189,7 +249,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     preparationSignal = signal;
     ui.status.textContent = isSearch ? "Preparing saved inputs for local setup search..." : "Building reference setups and grading the entered setup locally…";
     const numeric = id => ui[id].value.trim() ? Number(ui[id].value) : NaN;
-    const controls = ["ambient", "water", "input-compounds", "session-seed", ...setupAxes.map(axis => axis.control),
+    const controls = ["ambient", "water", "session-seed", ...setupAxes.map(axis => axis.control),
       ...(isSearch ? ["search-seconds", "search-refine", "search-stall", "search-idle"] : [])];
     for (const id of controls) if (!ui[id].checkValidity()) {
       const section = ui[id].closest("details"); if (section) section.open = true;
@@ -198,6 +258,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     }
     const limits = { seconds: numeric("search-seconds"), refine_laps: numeric("search-refine"), stall_laps: numeric("search-stall"), idle_batches: numeric("search-idle") };
     if (isSearch) searchLimits(limits);
+    if (!compounds.values().length) throw new Error("Select at least one tyre compound.");
     const files = {};
     for (const name of DEFINITION_FILES) {
       try { files[name] = await mod.file(name); }
@@ -207,7 +268,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     const seed = ui["session-seed"].value.trim() ? numeric("session-seed") : Math.floor(Math.random() * 1000000);
     const payload = { saveFile: save, trackFile: tracks.get(ui["track-choice"].value), files, seed, testing: calendarDefault?.testing === true,
       trackId: calendarDefault?.file === ui["track-choice"].value ? calendarDefault.track_id : undefined,
-      weather: { temperature_c: ui.ambient.value.trim() || ui.ambient.validity.badInput ? numeric("ambient") : null, wetness_mm: numeric("water") }, compounds: ui["input-compounds"].value,
+      weather: { temperature_c: ui.ambient.value.trim() || ui.ambient.validity.badInput ? numeric("ambient") : null, wetness_mm: numeric("water") }, compounds: compounds.values(), dataPack: mod.name,
       settings: Object.fromEntries(setupAxes.map(axis => [axis.key, numeric(axis.control)])),
       search: limits };
     const prepared = await search.prepareInputs(payload, signal);
@@ -218,7 +279,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     const progress = (checkpoint, reference) => {
       if (signal.aborted) return;
       if (checkpoint.grading.rows.length) showResult(checkpoint, { validation, diagnostics: false });
-      ui.status.textContent = reference ? `Preparing ${reference.driver} / ${reference.compound.toUpperCase()} reference...`
+      ui.status.textContent = reference ? `Preparing ${reference.driver} / ${compoundName(reference.compound, prepared.source)} reference...`
         : isSearch ? `${checkpoint.search.status === "preparing" ? "Preparing reference setups" : "Searching for improvements"}: ${checkpoint.search.drivers_ready}/${checkpoint.search.drivers_total} driver entries ready; ${checkpoint.search.statistics.evaluated || 0} candidate laps.` : "Grading the entered setup...";
       if (isSearch && performance.now() - lastLog >= 500) {
         write_log("search_progress", { validation, phase: checkpoint.search.status, drivers_ready: checkpoint.search.drivers_ready,
@@ -237,5 +298,5 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
   ui["prepare-inputs"].onclick = () => job(signal => calculate(signal, false));
   ui["search-setups"].onclick = () => job(signal => calculate(signal, true));
   clear();
-  return { setRoot, setMod, resetMod, clear, clearResult, refreshControls };
+  return { setRoot, setMod, resetMod, clear, clearResult, refreshControls, selectDefaultSave, stopScan: catalogue.stop };
 }

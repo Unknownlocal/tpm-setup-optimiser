@@ -1,11 +1,17 @@
 import { rankMods } from "./mod-resolver.js";
-import { trackOptions } from "./input-preparation.js";
+import { readJson, trackOptions } from "./input-preparation.js";
+import { compoundOptions } from "./compounds.js";
+import { saveSummary } from "./save-catalogue.js";
 import { resolveDefaultCircuit } from "./event-resolution.js";
 
 self.onmessage = async ({ data: { id, type, payload } }) => {
   try {
     let result;
-    if (type === "default-circuit") {
+    if (type === "save-summary") {
+      result = await saveSummary(payload);
+    } else if (type === "compound-options") {
+      result = compoundOptions(await readJson(payload, "tyremodel.json"));
+    } else if (type === "default-circuit") {
       result = await resolveDefaultCircuit(payload);
     } else if (type === "track-options") {
       result = await trackOptions(payload);

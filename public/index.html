@@ -55,9 +55,10 @@
       <p id="catalogue-note" class="hint"></p>
       <div id="matches" aria-label="Matching mods"></div>
       <div class="save-selection">
-        <label for="save-choice">Save from the game folder</label>
-        <select id="save-choice" disabled><option value="">Select a save…</option></select>
-        <p id="save-note" class="hint"></p>
+        <label for="save-choice">Saves for the selected data mod</label>
+        <select id="save-choice" disabled><option value="">Select a data mod first…</option></select>
+        <p id="save-note" class="hint" role="status" aria-live="polite"></p>
+        <p id="save-error" class="notice" role="alert" hidden></p>
         <div class="folder-row">
           <button id="choose-save" type="button" class="secondary" disabled>Choose save file</button><span id="save-name"></span>
         </div>
@@ -74,9 +75,12 @@
       <div class="input-grid">
         <label>Ambient temperature (°C, optional)<input id="ambient" type="number" step="any" placeholder="Generate session average"></label>
         <label>Water depth (mm)<input id="water" type="number" min="0" max="5" step="any" value="0" required></label>
-        <label>Tyre compound codes<input id="input-compounds" value="SMHIW" maxlength="10" required aria-describedby="compound-help"></label>
       </div>
-      <p id="compound-help" class="hint">S soft · M medium · H hard · I intermediate · W wet. Use SMH for dry compounds. AVG_DRY is included when all three are selected.</p>
+      <fieldset id="input-compounds" disabled aria-describedby="compound-help">
+        <legend>Tyre compounds</legend>
+        <div id="compound-choices" class="compound-choices"></div>
+      </fieldset>
+      <p id="compound-help" class="hint">Select a data mod to load its tyre compounds.</p>
       <p class="hint">Enter the game's displayed temperature, or leave it blank for a generated session average. Water depth 0 means dry; values up to 5 mm are supported.</p>
       <details>
         <summary>Entered setup</summary>
