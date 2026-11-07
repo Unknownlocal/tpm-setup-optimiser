@@ -99,6 +99,21 @@
         <p class="hint">Applied to every driver, compound and reference lap. Fuel stays constant over the projected lap; fuel burn, wear and failures are not simulated. A fixed seed repeats the scenario and search proposals.</p>
       </details>
       <details>
+        <summary>Advanced grading settings</summary>
+        <div class="input-grid">
+          <div>
+            <label for="pace-weight">Pace weight (%)</label>
+            <div class="input-with-action">
+              <input id="pace-weight" type="number" min="0" max="100" step="any" value="85" required aria-describedby="weight-default weight-note">
+              <button id="reset-pace-weight" type="button" class="secondary" aria-label="Reset pace weight to default">Default</button>
+            </div>
+          </div>
+        </div>
+        <p id="weight-default" class="hint">Default: 85% pace and 15% driver preference, matching the vanilla game's setup grading calculation.</p>
+        <p id="weight-note" class="hint" role="status" aria-live="polite">Weights: 85% pace / 15% driver preference.</p>
+        <p class="hint">Changes grading and the search objective, including AVG_DRY. Custom weights affect optimiser grades; the game's setup panel uses its own grading. Reference laps and the predicted time for a fixed setup stay unchanged.</p>
+      </details>
+      <details>
         <summary>Advanced search settings</summary>
         <div class="input-grid">
           <label>Search time limit (seconds)<input id="search-seconds" type="number" min="0.1" max="300" step="any" value="15" required></label>
@@ -129,7 +144,7 @@
       <div id="input-details"></div>
       <details class="assumptions">
         <summary>How to read these estimates</summary>
-        <p>Grades combine 85% predicted pace and 15% driver preference fit. S+ starts at 98/100. AVG_DRY uses one shared setup and scores it separately on soft, medium and hard tyres.</p>
+        <p>Grades use the selected pace and driver-preference weights; the default is 85% pace and 15% preference. Custom weights change the optimiser's grades. S+ starts at 98/100. AVG_DRY uses one shared setup and scores it separately on soft, medium and hard tyres.</p>
         <p>Uses the parts fitted in the save, including development gains, understanding and chassis limits. Future development is not simulated. Supported saves use Formula entries, a standard car profile and fitted chassis baseline snapshots.</p>
         <p>Lap estimates use fresh, fully warmed tyres and the selected fuel, pace and engine mode. The defaults are 15 kg fuel, push pace and medium engine. Fuel stays constant over each projected lap. Balanced ERS uses fitted equipment under the active regulations. Saved tyre-supplier ratings and contract grip bonuses are applied. Each projected lap starts with a charged battery. Traffic, tyre wear, failures and DRS are excluded.</p>
       </details>

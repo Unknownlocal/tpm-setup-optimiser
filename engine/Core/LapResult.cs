@@ -22,9 +22,9 @@ public sealed class LapResult
     public LapInput? Inputs { get; init; }
     public LapResult[]? Components { get; private init; }
 
-    public LapResult Assess(double balancePreference, double tractionPreference, ReferenceResult reference)
+    public LapResult Assess(double balancePreference, double tractionPreference, ReferenceResult reference, GradingWeights? weights = null)
     {
-        var assessment = SetupGrading.Assess(Balance, Traction, Lap, balancePreference, tractionPreference, reference.Lap);
+        var assessment = SetupGrading.Assess(Balance, Traction, Lap, balancePreference, tractionPreference, reference.Lap, weights);
         Preference = assessment.Preference; Pace = assessment.Pace; Delta = assessment.Delta; Score = assessment.Score; Grade = assessment.Grade; Reference = reference;
         return this;
     }

@@ -156,7 +156,7 @@ function driverInputs(save, team, definitions) {
 }
 
 /** Read local source data. Keep unrelated save and options fields out of the result. */
-export async function prepareInputs({ saveFile, trackFile, files, weather, settings, compounds, dataPack, driving }) {
+export async function prepareInputs({ saveFile, trackFile, files, weather, settings, compounds, dataPack, driving, paceWeightPct = 85 }) {
   object(files, "Definition files");
   const total = saveFile?.size + trackFile?.size + Object.values(files).reduce((sum, file) => sum + file.size, 0);
   requireValue(total <= 96 * 1024 * 1024, "Selected input files exceed 96 MiB.");
@@ -224,6 +224,7 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
     week: number(save.week_index, "Saved week index", 0) + 1,
     savedPack: text(save.data_pack, "Saved data pack"), track, drivers,
     driving: driving ?? { fuel_kg: 15, pace: "push", engine: "medium" },
+    pace_weight_pct: paceWeightPct,
     weather: { temperature_c: weather.temperature_c == null ? null : number(weather.temperature_c, "Manual ambient temperature"),
       wetness_mm: number(weather.wetness_mm, "Water depth", 0, 5) },
     settings: selectedSetup.settings, setupDefinitions: selectedSetup.definitions, setupModel: model.id, setupAxes: selectedSetup.axes,

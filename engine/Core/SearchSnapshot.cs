@@ -60,7 +60,7 @@ public static class SearchSnapshot
         else
         {
             writer.WriteNumber("balance", row.Balance); writer.WriteNumber("traction", row.Traction); writer.WriteNumber("tyre_temperature_c", row.Temperature);
-            writer.WriteNumber("preference_score", row.Preference); writer.WriteNumber("maximum_score", 85 + .15 * row.Preference); writer.WriteNumber("pace_score", row.Pace); writer.WriteNumber("pace_delta_s", row.Delta); writer.WriteNumber("lap_time_s", row.Lap);
+            writer.WriteNumber("preference_score", row.Preference); writer.WriteNumber("maximum_score", scenario.Weights.Combine(100, row.Preference)); writer.WriteNumber("pace_score", row.Pace); writer.WriteNumber("pace_delta_s", row.Delta); writer.WriteNumber("lap_time_s", row.Lap);
             writer.WriteStartArray("tyre_grip"); writer.WriteNumberValue(row.Lateral); writer.WriteNumberValue(row.Longitudinal); writer.WriteEndArray();
             if (row.Inputs is { } input) { writer.WritePropertyName("inputs"); input.Write(writer); }
             if (row.Reference is { } reference) { writer.WriteNumber("reference_lap_s", reference.Lap); Settings(writer, "reference_settings", reference.Settings); }

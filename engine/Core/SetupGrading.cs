@@ -50,13 +50,13 @@ public static class SetupGrading
     }
 
     /// <summary>Combine one lap's pace and driver preference fit into a grade.</summary>
-    public static SetupAssessment Assess(double balance, double traction, double lap, double preferredBalance, double preferredTraction, double reference)
+    public static SetupAssessment Assess(double balance, double traction, double lap, double preferredBalance, double preferredTraction, double reference, GradingWeights? weights = null)
     {
         double fit = Preference(balance, traction, preferredBalance, preferredTraction);
         // Staged guidance can be beaten. A faster lap still receives at most 100 pace points.
         double delta = Math.Max(0, Finite(lap) - reference), pace = PaceScore(delta, reference);
-        // The final grade favours pace: 85% pace and 15% driver preference fit.
-        double score = .85 * pace + .15 * fit;
+        // The default matches the game; custom weights change only the optimiser's objective.
+        double score = (weights ?? GradingWeights.Default).Combine(pace, fit);
         return new(fit, pace, delta, score, Grade(score));
     }
 

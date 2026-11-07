@@ -29,3 +29,4 @@ GradingChecks.Run();
 SearchChecks.Run();
 EquipmentChecks.Run();
 DrivingChecks.Run();
+WeightChecks.Run();

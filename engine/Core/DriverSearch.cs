@@ -32,7 +32,7 @@ public sealed class DriverSearch : IDisposable
             var solver = new ReferenceSolver(Scenario, i);
             foreach (int slice in solver.Solve()) yield return slice;
             var reference = solver.Result!; Stats.ReferenceLaps += reference.Evaluated;
-            if (gradeOnly) entered[i].Assess(Scenario.BalancePreference, Scenario.TractionPreference, reference);
+            if (gradeOnly) entered[i].Assess(Scenario.BalancePreference, Scenario.TractionPreference, reference, Scenario.Weights);
             else scorers.Add(new(Scenario, i, reference, Stats));
         }
         if (gradeOnly)

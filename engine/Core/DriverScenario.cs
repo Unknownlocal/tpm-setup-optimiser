@@ -17,6 +17,7 @@ public sealed class DriverScenario
     public SettingSpace Space => space ?? throw new InvalidOperationException("This scenario was prepared for grading only.");
     public double BalancePreference { get; }
     public double TractionPreference { get; }
+    public GradingWeights Weights { get; }
     public double WindSpeed { get; }
     public double WindDirection { get; }
     public int SetupCacheEntries => effects?.Count ?? 0;
@@ -36,6 +37,7 @@ public sealed class DriverScenario
         setup = new(cars.AsSpan(1 + index * SavedCar.RecordLength + SavedCar.ValueLength, FormulaSetup.ModelLength));
         Compounds = Items(At(source, "tyres")).Select(tyre => Text(At(tyre, "name"))).ToArray();
         tyres = conditions.Tyres;
+        Weights = GradingWeights.Read(source);
         ersBonus = conditions.ErsBonuses[index];
         var preferences = At(driver, "preferences"); BalancePreference = Number(At(preferences, "balance_preference")); TractionPreference = Number(At(preferences, "traction_preference"));
         var driving = DrivingSettings.Read(source); fuelKg = driving.FuelKg;
@@ -49,7 +51,8 @@ public sealed class DriverScenario
     public double Ceiling(SetupPoint point)
     {
         var result = Effects(point);
-        return 85 + .15 * SetupGrading.Preference(result.Balance, result.Traction, BalancePreference, TractionPreference);
+        // A candidate cannot exceed a perfect pace score under the same selected weights.
+        return Weights.Combine(100, SetupGrading.Preference(result.Balance, result.Traction, BalancePreference, TractionPreference));
     }
 
     SetupEffects Effects(SetupPoint point)

@@ -234,6 +234,22 @@ textarea {
   margin-top: 7px;
 }
 
+.input-with-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input-with-action input {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.input-with-action button {
+  flex-shrink: 0;
+}
+
 fieldset {
   min-width: 0;
   border: 1px solid var(--border);

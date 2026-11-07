@@ -33,7 +33,7 @@ public sealed class CompoundSearch : CandidateScorer
         {
             foreach (var point in pending.Skip(start).Take(16))
             {
-                var row = scenario.Evaluate(compound, point).Assess(scenario.BalancePreference, scenario.TractionPreference, Reference);
+                var row = scenario.Evaluate(compound, point).Assess(scenario.BalancePreference, scenario.TractionPreference, Reference, scenario.Weights);
                 cache[point] = row; found.Add(new(point, row)); stats.Evaluated++;
                 if (BestKnown == null || row.Score > BestKnown.Score) BestKnown = row;
             }

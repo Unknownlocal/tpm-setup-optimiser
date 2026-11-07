@@ -3,6 +3,12 @@ import { settingText } from "./setup-model.js";
 import { DRY_COMPOUNDS, compoundName } from "./compounds.js";
 export { DRY_COMPOUNDS, compoundName };
 
+export function gradingSummary(input) {
+  const pace = input.pace_weight_pct;
+  const percent = value => value.toLocaleString("en-GB", { maximumFractionDigits: 6 });
+  return `Weights: ${percent(pace)}% pace / ${percent(100 - pace)}% driver preference${pace === 85 ? "" : " (custom)"}`;
+}
+
 export function drivingSummary(input) {
   const { fuel_kg, pace, engine } = input.driving;
   return `Fuel ${fuel_kg} kg · Pace ${pace} · Engine ${engine}`;
@@ -33,7 +39,7 @@ export function resultsText(result) {
   const input = result.source;
   const lines = ["TPM Setup Optimiser", `${input.team} | Season ${input.season}, week ${input.week} | ${input.track.name}`,
     `Ambient ${input.weather.temperature_c.toFixed(2)} C | Water ${input.weather.wetness_mm} mm | Seed ${result.prediction.seed}`,
-    drivingSummary(input), equipmentSummary(input), runSummary(result), ""];
+    drivingSummary(input), gradingSummary(input), equipmentSummary(input), runSummary(result), ""];
   for (const row of result.grading.rows) {
     const average = row.compound === "avg_dry";
     const scores = average ? DRY_COMPOUNDS.map(name => `${compoundName(name, input)} ${row.compound_scores[name].toFixed(2)}`).join(" | ") : row.score.toFixed(2);

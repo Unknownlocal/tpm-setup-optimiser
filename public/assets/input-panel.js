@@ -7,6 +7,7 @@ import { searchLimits } from "./search-settings.js";
 import { createSaveCatalogue } from "./save-catalogue.js";
 import { createCompoundSelection } from "./compound-selection.js";
 import { compoundName } from "./compounds.js";
+import { gradingSummary } from "./result-format.js";
 
 /** Keep local file selections in memory and display the worker's checked source inputs. */
 export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy, search }) {
@@ -63,6 +64,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     ui["track-note"].textContent = "Select a save to choose the calendar default.";
   }
   function refreshControls() {
+    refreshWeights();
     ui["choose-save"].disabled = !isReady();
     ui["save-choice"].disabled = !isReady() || !catalogue.matches.size;
     ui["track-choice"].disabled = !isReady() || !tracks.size;
@@ -71,6 +73,11 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     // Stop also covers background metadata work, independently of calculations.
     ui.cancel.disabled = !isBusy() && !catalogue.scanning;
     ui["drop-save"].setAttribute("aria-disabled", String(!isReady()));
+  }
+  function refreshWeights() {
+    ui["weight-note"].textContent = ui["pace-weight"].validity.valid
+      ? `${gradingSummary({ pace_weight_pct: ui["pace-weight"].valueAsNumber })}. Driver preference uses the remaining share.`
+      : "Enter a pace weight from 0 to 100 percent.";
   }
   function selectDefaultSave() {
     // Wait for the whole scan and any foreground job; never replace a user's choice.
@@ -230,13 +237,20 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       await selectSave(files[0], signal);
     });
   };
-  for (const key of ["ambient", "water", "fuel-load", "driving-pace", "engine-mode", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", ...setupAxes.map(axis => axis.control)]) {
+  for (const key of ["ambient", "water", "fuel-load", "driving-pace", "engine-mode", "pace-weight", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", ...setupAxes.map(axis => axis.control)]) {
     ui[key].oninput = () => {
+      if (key === "pace-weight") refreshWeights();
       // Scenario edits invalidate validation results, but folder/calendar work can finish.
       if (preparationSignal && !preparationSignal.aborted) invalidate();
       else clearResult();
     };
   }
+  ui["reset-pace-weight"].onclick = () => {
+    const control = ui["pace-weight"];
+    control.value = control.defaultValue;
+    // Follow the normal edit path so reset also clears results and cancels an active calculation.
+    control.dispatchEvent(new Event("input", { bubbles: true }));
+  };
   ui["track-choice"].oninput = () => {
     invalidate();
     ui["track-note"].textContent = ui["track-choice"].value
@@ -249,12 +263,12 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     preparationSignal = signal;
     ui.status.textContent = isSearch ? "Preparing saved inputs for local setup search..." : "Building reference setups and grading the entered setup locally…";
     const numeric = id => ui[id].value.trim() ? Number(ui[id].value) : NaN;
-    const controls = ["ambient", "water", "fuel-load", "driving-pace", "engine-mode", "session-seed", ...setupAxes.map(axis => axis.control),
+    const controls = ["ambient", "water", "fuel-load", "driving-pace", "engine-mode", "pace-weight", "session-seed", ...setupAxes.map(axis => axis.control),
       ...(isSearch ? ["search-seconds", "search-refine", "search-stall", "search-idle"] : [])];
     for (const id of controls) if (!ui[id].checkValidity()) {
       const section = ui[id].closest("details"); if (section) section.open = true;
       ui[id].focus(); ui[id].reportValidity();
-      throw new Error(`Check ${ui[id].closest("label").textContent.trim() || "the session controls"}.`);
+      throw new Error(`Check ${ui[id].labels?.[0]?.textContent.trim() || "the session controls"}.`);
     }
     const limits = { seconds: numeric("search-seconds"), refine_laps: numeric("search-refine"), stall_laps: numeric("search-stall"), idle_batches: numeric("search-idle") };
     if (isSearch) searchLimits(limits);
@@ -270,6 +284,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       trackId: calendarDefault?.file === ui["track-choice"].value ? calendarDefault.track_id : undefined,
       weather: { temperature_c: ui.ambient.value.trim() || ui.ambient.validity.badInput ? numeric("ambient") : null, wetness_mm: numeric("water") }, compounds: compounds.values(), dataPack: mod.name,
       driving: { fuel_kg: numeric("fuel-load"), pace: ui["driving-pace"].value, engine: ui["engine-mode"].value },
+      paceWeightPct: numeric("pace-weight"),
       settings: Object.fromEntries(setupAxes.map(axis => [axis.key, numeric(axis.control)])),
       search: limits };
     const prepared = await search.prepareInputs(payload, signal);

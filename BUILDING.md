@@ -38,6 +38,10 @@ Advanced session settings let you change fuel load, driving pace and engine mode
 for every driver. Defaults remain 15 kg, push and medium. Both setup searches and
 their reference laps use the selected conditions. Fuel stays constant during each
 projected lap; fuel burn, wear and failures are not simulated.
+Advanced grading settings let you set the pace percentage; driver preference
+uses the remaining share. The default is 85% pace and 15% preference. This affects
+grading and setup search, including AVG_DRY. Custom weights change optimiser
+grades; they do not change the predicted lap time for a fixed setup.
 
 Saves must use schema version 3, Formula entries, the standard car profile and
 fitted chassis baseline snapshots. The data mod must match the save. The build
