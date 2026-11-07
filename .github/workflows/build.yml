@@ -1,0 +1,45 @@
+name: Build browser bundle
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: '10.0.403'
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Install browser build workload
+        working-directory: engine
+        run: dotnet workload install wasm-tools --skip-manifest-update
+      - name: Check core calculations
+        run: dotnet run --project engine/Core.Tests/Tpm.Setup.Core.Tests.csproj -c Release
+      - name: Build verified static bundle
+        run: python tools/build_release.py
+      # Upload only generated static output; no source, tests, game data or Vercel credentials.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vercel-output
+          path: .vercel/output/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
