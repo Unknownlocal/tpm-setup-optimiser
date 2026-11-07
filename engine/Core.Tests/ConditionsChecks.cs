@@ -32,9 +32,10 @@ static class ConditionsChecks
           {"min_mm":0,"max_mm":1,"lat_mult":1,"long_mult":1},
           {"min_mm":1,"max_mm":5,"lat_mult":0.8,"long_mult":0.7}]}
         """);
-        var dry = TyreGrip.Compile(compound.RootElement, 1, 30, 10).Evaluate(0, false);
+        var supplier = new TyreSupplier(50, 50, 50, 1);
+        var dry = TyreGrip.Compile(compound.RootElement, 1, 30, 10, supplier).Evaluate(0, false);
         Near(dry.Temperature, 100); Near(dry.Lateral, 1); Near(dry.Longitudinal, .9);
-        var wetModel = TyreGrip.Compile(compound.RootElement, 1.001, 50, 10);
+        var wetModel = TyreGrip.Compile(compound.RootElement, 1.001, 50, 10, supplier);
         var wet = wetModel.Evaluate(5, false);
         Near(wet.Temperature, 115); Near(wet.Lateral, .797); Near(wet.Longitudinal, .6276375);
         Near(wetModel.Evaluate(5, true).Lateral, .8);

@@ -27,3 +27,4 @@ SavedCarChecks.Run();
 ConditionsChecks.Run();
 GradingChecks.Run();
 SearchChecks.Run();
+EquipmentChecks.Run();

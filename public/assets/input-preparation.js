@@ -2,7 +2,7 @@ import { parseConstants } from "./python-literals.js";
 import { setupModel, resolveSetupAxes } from "./setup-model.js";
 
 export const DEFINITION_FILES = ["config.json", "tyremodel.json", "parts.json", "car_parts.json",
-  "car_concepts.json", "engines.json", "regulations.json", "options.json", "constants.py"];
+  "car_concepts.json", "engines.json", "ers_development.json", "regulations.json", "options.json", "constants.py"];
 const COMPOUNDS = { S: "soft", M: "medium", H: "hard", I: "intermediate", W: "wet" };
 
 function requireValue(condition, message) {
@@ -183,6 +183,7 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
   const selectedSetup = setupInputs(model, definitions.config, settings);
   const carPolicy = activePolicy(save, definitions.regulations, "car_profile");
   const tyrePolicy = activePolicy(save, definitions.regulations, "tyre_profile");
+  const ersPolicy = activePolicy(save, definitions.regulations, "ers_policy");
   // Match the game's profile normalisation, including older durability-delta definitions.
   let wearMultiplier = tyrePolicy.wear_rate_multiplier;
   if (wearMultiplier === undefined) {
@@ -227,7 +228,7 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
     teamInputs: pick(team, ["attr", "team_pace", "braking", "acceleration", "car_mass_kg", "tyre_management",
       "aero_efficiency_rating", "chassis_profile", "chassis_designs", "part_understanding_laps", "tyre_contract"]),
     tyreSupplier: { ...tyreSupplier, name: supplierName }, tyres,
-    activePolicies: { car: carPolicy, tyres: tyrePolicy }, regulations: save.regulations,
+    activePolicies: { car: carPolicy, tyres: tyrePolicy, ers: ersPolicy }, regulations: save.regulations,
     sessionOptions: definitions.options,
     trackLapModifiersEnabled: save.track_lap_modifiers_enabled ?? true,
     dynamicsStaff: list(save.staff, "Saved staff").filter(staff => staff.contract?.team === teamName && staff.role === "head_of_dynamics")

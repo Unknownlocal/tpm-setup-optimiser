@@ -18,7 +18,7 @@ public sealed class TyreGrip
         this.lateral = lateral; this.longitudinal = longitudinal;
     }
 
-    public static TyreGrip Compile(JsonElement compound, double water, double ambient, double skill)
+    public static TyreGrip Compile(JsonElement compound, double water, double ambient, double skill, TyreSupplier supplier)
     {
         var bands = Items(At(compound, "wetness_states")).ToArray();
         if (bands.Length == 0) throw new ArgumentException("Tyre compound has no wetness bands.");
@@ -31,10 +31,13 @@ public sealed class TyreGrip
         var window = Items(At(compound, "temp_window_c")).Select(value => Number(value)).ToArray();
         if (window.Length != 2) throw new ArgumentException("Tyre temperature window needs two values.");
         double shift = skill < 10 ? (skill - 10) * (5.0 / 9) : (skill - 10) * .5;
-        double low = window[0] - shift, high = window[1] + shift;
+        double tolerance = supplier.Tolerance < 50 ? .5 + .5 * (supplier.Tolerance - 1) / 49 : 1 + .5 * (supplier.Tolerance - 50) / 50;
+        double midpoint = (window[0] + window[1]) * .5, half = (window[1] - window[0]) * .5 * tolerance;
+        double low = midpoint - half - shift, high = midpoint + half + shift;
         if (high < low) low = high = (low + high) * .5;
         return new(ambient + (water > 1 ? 60 : 70), low, high,
-            Number(At(compound, "lat_grip_base")) * Number(At(band, "lat_mult")), Number(At(compound, "long_grip_base")) * Number(At(band, "long_mult")));
+            Number(At(compound, "lat_grip_base")) * Number(At(band, "lat_mult")) * (1 + (supplier.Lateral - 50) * .0001) * supplier.ContractGrip,
+            Number(At(compound, "long_grip_base")) * Number(At(band, "long_mult")) * (1 + (supplier.Longitudinal - 50) * .0001) * supplier.ContractGrip);
     }
 
     /// <summary>Apply the setup's pressure effect to the compiled warmed target, then calculate grip.</summary>

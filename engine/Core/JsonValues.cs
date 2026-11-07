@@ -38,7 +38,7 @@ internal static class JsonValues
     }
     public static double Required(JsonElement value, string label) =>
         value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
-            ? throw new ArgumentException($"Missing fitted chassis {label}.") : Number(value);
+            ? throw new ArgumentException($"Missing {label}.") : Number(value);
     public static bool Flag(JsonElement value) => value.ValueKind == JsonValueKind.True;
     public static double Clamp(double value, double low, double high) => Math.Max(low, Math.Min(high, value));
 

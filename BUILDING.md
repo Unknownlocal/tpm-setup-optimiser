@@ -32,6 +32,12 @@ Saves must use schema version 3, Formula entries, the standard car profile and
 fitted chassis baseline snapshots. The data mod must match the save. The build
 contains no game data or original game binaries. Lap estimates use the session
 defaults described in the interface and can differ from the game's setup panel.
+Saved tyre-supplier ratings and contract grip bonuses are applied. ERS follows the
+active regulation: fitted statistics for open development, the game's standard
+unit for spec rules, or no assistance when banned. The selected mod must include
+`ers_development.json`; open ERS needs a fitted unit with its saved statistics.
+Each projected lap starts charged. Battery depletion across laps and failures
+are not simulated.
 
 The GitHub build workflow checks the core and produces the same output on pull
 requests or manual runs, using .NET SDK 10.0.403. It does not deploy. Extract its

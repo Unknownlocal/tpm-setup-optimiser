@@ -7,7 +7,7 @@ using static Tpm.Setup.Core.JsonValues;
 namespace Tpm.Setup.Core;
 
 /// <summary>Shared wind, source-order driver variability and compiled tyres for one scenario.</summary>
-public sealed record SessionConditions(WindModel Wind, double[] CornerVariations, TyreGrip[] Tyres)
+public sealed record SessionConditions(WindModel Wind, double[] CornerVariations, TyreGrip[] Tyres, double[] ErsBonuses)
 {
     public static SessionConditions Build(JsonElement source, int seed, string? trackId = null, bool? testing = null)
     {
@@ -29,7 +29,8 @@ public sealed record SessionConditions(WindModel Wind, double[] CornerVariations
         var weather = At(source, "weather");
         double water = Number(At(weather, "wetness_mm"));
         double ambient = Required(At(weather, "temperature_c"), "ambient temperature");
-        var tyres = Items(At(source, "tyres")).Select(tyre => TyreGrip.Compile(tyre, water, ambient, skill)).ToArray();
-        return new(wind, drivers.Select(driver => variations[Text(At(driver, "name"))]).ToArray(), tyres);
+        var tyres = Items(At(source, "tyres")).Select(tyre => TyreGrip.Compile(tyre, water, ambient, skill, TyreSupplier.Read(source, Text(At(tyre, "name"))))).ToArray();
+        var ers = new ErsModel(source);
+        return new(wind, drivers.Select(driver => variations[Text(At(driver, "name"))]).ToArray(), tyres, drivers.Select(ers.Bonus).ToArray());
     }
 }

@@ -10,7 +10,7 @@ static class SearchChecks
 {
     static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
 
-    public static void Run()
+    internal static JsonObject Source()
     {
         var source = JsonNode.Parse(SavedCarChecks.Source)!.AsObject();
         source["version"] = 1; source["setupModel"] = "formula";
@@ -25,6 +25,16 @@ static class SearchChecks
         source["tyres"]!.AsArray().Add(medium);
         source["drivers"]![0]!["entry"] = 1;
         source["drivers"]![0]!["skills"] = JsonNode.Parse("""{"cornering":10,"braking":10}"""); source["drivers"]![0]!["preferences"]!["traction_preference"] = 50;
+        source["activePolicies"]!["ers"] = JsonNode.Parse("""{"ers_mode":"spec","ers_enabled":true}""");
+        source["definitions"]!["ers_development"] = new JsonObject();
+        source["teamInputs"]!["tyre_contract"] = JsonNode.Parse("""{"type":"customer"}""");
+        source["tyreSupplier"] = JsonNode.Parse("""{"lateral_grip":{"soft":50,"medium":50},"longitudinal_grip":{"soft":50,"medium":50},"temperature_tolerance":{"soft":50,"medium":50}}""");
+        return source;
+    }
+
+    public static void Run()
+    {
+        var source = Source();
         var request = new JsonObject { ["source"] = source, ["payload"] = JsonNode.Parse("""{"seed":51,"trackId":"authored","search":{"seconds":15,"refine_laps":500,"stall_laps":100,"idle_batches":64}}"""), ["mode"] = "search", ["names"] = new JsonArray("Example Driver") };
         using var job = new SearchJob(request.ToJsonString()); var clock = Stopwatch.StartNew();
         while (!job.PrepareStep()) Check(clock.Elapsed.TotalSeconds < 10, "Search preparation did not finish.");

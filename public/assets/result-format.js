@@ -3,6 +3,12 @@ import { settingText } from "./setup-model.js";
 export const DRY_COMPOUNDS = ["soft", "medium", "hard"];
 export const compoundName = compound => compound.toUpperCase();
 
+export function equipmentSummary(input) {
+  const policy = input.activePolicies.ers;
+  const ers = policy.ers_enabled === false ? "disabled by regulation" : `${policy.name || "active regulation"}, balanced deployment`;
+  return `ERS: ${ers}. Tyre supplier: ${input.tyreSupplier.name} (${input.teamInputs.tyre_contract.type}); saved ratings and contract bonuses applied.`;
+}
+
 export function lapTime(seconds) {
   const ms = Math.round(seconds * 1000);
   return `${Math.floor(ms / 60000)}:${((ms % 60000) / 1000).toFixed(3).padStart(6, "0")}`;
@@ -22,7 +28,7 @@ export function resultsText(result) {
   const input = result.source;
   const lines = ["TPM Setup Optimiser", `${input.team} | Season ${input.season}, week ${input.week} | ${input.track.name}`,
     `Ambient ${input.weather.temperature_c.toFixed(2)} C | Water ${input.weather.wetness_mm} mm | Seed ${result.prediction.seed}`,
-    runSummary(result), ""];
+    equipmentSummary(input), runSummary(result), ""];
   for (const row of result.grading.rows) {
     const average = row.compound === "avg_dry";
     const scores = average ? DRY_COMPOUNDS.map(name => `${compoundName(name)} ${row.compound_scores[name].toFixed(2)}`).join(" | ") : row.score.toFixed(2);
