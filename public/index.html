@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
   <title>TPM · Setup optimiser</title>
   <link rel="icon" href="/favicon.ico">
   <link rel="stylesheet" href="/assets/style.css">
@@ -45,11 +46,11 @@
       <p class="hint">If a folder picker refuses Program Files, drag the folder from your file manager instead.</p>
       <label for="mod-query">Data mod name or relative folder path</label>
       <div class="mod-search">
-        <input id="mod-query" maxlength="256" placeholder="Real Names 2026" disabled aria-describedby="query-help">
+        <input id="mod-query" maxlength="256" placeholder="&lt;mod-name&gt;" disabled aria-describedby="query-help">
         <button id="inspect" type="button" disabled>Select mod</button>
         <button id="choose-mod" type="button" class="secondary" disabled>Choose mod folder</button>
       </div>
-      <p id="query-help" class="hint">Examples: Real Names 2026, f1_2026-pfm or data/my-mod. You can also choose a mod folder outside the game.</p>
+      <p id="query-help" class="hint">Examples: <code>&lt;mod-name&gt;</code>, <code>&lt;mod-json-name&gt;</code> or <code>data/&lt;mod-folder&gt;</code>. You can also choose a mod folder outside the game.</p>
       <p id="input-mod" class="selection-note"></p>
       <p id="catalogue-note" class="hint"></p>
       <div id="matches" aria-label="Matching mods"></div>
