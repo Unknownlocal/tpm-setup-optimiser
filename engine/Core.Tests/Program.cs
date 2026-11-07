@@ -28,3 +28,4 @@ ConditionsChecks.Run();
 GradingChecks.Run();
 SearchChecks.Run();
 EquipmentChecks.Run();
+DrivingChecks.Run();

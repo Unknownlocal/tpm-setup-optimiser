@@ -3,6 +3,11 @@ import { settingText } from "./setup-model.js";
 import { DRY_COMPOUNDS, compoundName } from "./compounds.js";
 export { DRY_COMPOUNDS, compoundName };
 
+export function drivingSummary(input) {
+  const { fuel_kg, pace, engine } = input.driving;
+  return `Fuel ${fuel_kg} kg · Pace ${pace} · Engine ${engine}`;
+}
+
 export function equipmentSummary(input) {
   const policy = input.activePolicies.ers;
   const ers = policy.ers_enabled === false ? "disabled by regulation" : `${policy.name || "active regulation"}, balanced deployment`;
@@ -28,7 +33,7 @@ export function resultsText(result) {
   const input = result.source;
   const lines = ["TPM Setup Optimiser", `${input.team} | Season ${input.season}, week ${input.week} | ${input.track.name}`,
     `Ambient ${input.weather.temperature_c.toFixed(2)} C | Water ${input.weather.wetness_mm} mm | Seed ${result.prediction.seed}`,
-    equipmentSummary(input), runSummary(result), ""];
+    drivingSummary(input), equipmentSummary(input), runSummary(result), ""];
   for (const row of result.grading.rows) {
     const average = row.compound === "avg_dry";
     const scores = average ? DRY_COMPOUNDS.map(name => `${compoundName(name, input)} ${row.compound_scores[name].toFixed(2)}`).join(" | ") : row.score.toFixed(2);
@@ -37,6 +42,6 @@ export function resultsText(result) {
     for (const axis of input.setupAxes) lines.push(`  ${axis.label}: ${settingText(axis, (row.settings || input.settings)[axis.key])}`);
     lines.push("");
   }
-  lines.push("Predicted laps use fresh, fully warmed tyres and fixed session defaults. Grades can differ from the game's nominal setup panel.");
+  lines.push("Predicted laps use fresh, fully warmed tyres and constant fuel. Grades can differ from the game's nominal setup panel.");
   return lines.join("\n");
 }

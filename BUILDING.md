@@ -34,6 +34,10 @@ Scanning runs locally in the background and can be stopped; selecting the mod
 again finishes the scan using cached metadata. A manually chosen save must match
 the mod too. Tyre checkboxes come from that mod's definitions, with all selected
 initially. AVG_DRY is included when soft, medium and hard are selected.
+Advanced session settings let you change fuel load, driving pace and engine mode
+for every driver. Defaults remain 15 kg, push and medium. Both setup searches and
+their reference laps use the selected conditions. Fuel stays constant during each
+projected lap; fuel burn, wear and failures are not simulated.
 
 Saves must use schema version 3, Formula entries, the standard car profile and
 fitted chassis baseline snapshots. The data mod must match the save. The build

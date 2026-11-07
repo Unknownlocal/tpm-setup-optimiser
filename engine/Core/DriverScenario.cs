@@ -25,7 +25,7 @@ public sealed class DriverScenario
     readonly double[] car;
     readonly FormulaSetup setup;
     readonly TyreGrip[] tyres;
-    readonly double cornerBonus, brakingBonus, water, ersBonus;
+    readonly double cornerBonus, brakingBonus, water, ersBonus, fuelKg, enginePower;
     readonly MotionModel motion;
     readonly SettingSpace? space;
 
@@ -38,7 +38,10 @@ public sealed class DriverScenario
         tyres = conditions.Tyres;
         ersBonus = conditions.ErsBonuses[index];
         var preferences = At(driver, "preferences"); BalancePreference = Number(At(preferences, "balance_preference")); TractionPreference = Number(At(preferences, "traction_preference"));
-        var skills = At(driver, "skills"); cornerBonus = Math.Max(0, Number(At(skills, "cornering"))) * .1 + conditions.CornerVariations[index] + .4; brakingBonus = Math.Max(0, Number(At(skills, "braking"))) * .03;
+        var driving = DrivingSettings.Read(source); fuelKg = driving.FuelKg;
+        // Mode adjusts the worn fitted engine; clamp once for all reference and candidate laps.
+        enginePower = Clamp(car[9] + driving.EnginePowerDelta, 0, 100);
+        var skills = At(driver, "skills"); cornerBonus = Math.Max(0, Number(At(skills, "cornering"))) * .1 + conditions.CornerVariations[index] + driving.CorneringBonus; brakingBonus = Math.Max(0, Number(At(skills, "braking"))) * .03;
         water = Number(At(At(source, "weather"), "wetness_mm")); WindSpeed = conditions.Wind.Speed; WindDirection = conditions.Wind.Direction;
         Initial = SettingSpace.ReadSettings(At(source, "settings")); ReferenceBounds = ReferenceGuidance.Bounds(At(source, "setupDefinitions")); space = search ? new(At(source, "setupAxes")) : null; this.motion = motion;
     }
@@ -71,7 +74,7 @@ public sealed class DriverScenario
     {
         var grip = tyres[compound].Evaluate(effects.TemperatureDelta, car[12] == 1);
         var input = new LapInput(car[0] + effects.Slow / .084375, car[1] + effects.Med / .09375, car[2] + effects.High / .15, 0, car[3] + effects.Straight / .18,
-            car[4] + (water > 1 ? car[11] : 0), car[6], car[5] + effects.Acceleration / .015 + ersBonus, car[9], Math.Max(300, car[7]), car[10], 15, 800,
+            car[4] + (water > 1 ? car[11] : 0), car[6], car[5] + effects.Acceleration / .015 + ersBonus, enginePower, Math.Max(300, car[7]), car[10], fuelKg, 800,
             cornerBonus, brakingBonus, grip.Lateral, grip.Longitudinal, car[8]);
         return new() { Compound = Compounds[compound], Settings = settings, Balance = effects.Balance, Traction = effects.Traction, Temperature = grip.Temperature, Lateral = grip.Lateral, Longitudinal = grip.Longitudinal, Lap = motion.Evaluate(input), Inputs = includeInputs ? input : null };
     }

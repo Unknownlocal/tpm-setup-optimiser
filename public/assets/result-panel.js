@@ -1,6 +1,6 @@
 import { write_log } from "./debug-log.js";
 import { settingText } from "./setup-model.js";
-import { compoundName, DRY_COMPOUNDS, equipmentSummary, lapTime, runSummary } from "./result-format.js";
+import { compoundName, DRY_COMPOUNDS, drivingSummary, equipmentSummary, lapTime, runSummary } from "./result-format.js";
 
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -26,7 +26,7 @@ export function renderResults(ui, result, { validation, diagnostics = true }) {
   }
   const temperature = input.weather.temperature_source === "generated" ? input.weather.temperature_c.toFixed(2) : String(input.weather.temperature_c);
   ui["input-summary"].textContent = `${input.team} · Season ${input.season}, week ${input.week} · ${input.track.name} · ${temperature} °C · ${input.weather.wetness_mm} mm water`;
-  ui["run-summary"].textContent = `${runSummary(result)} ${equipmentSummary(input)}`;
+  ui["run-summary"].textContent = `${runSummary(result)} ${drivingSummary(input)}. ${equipmentSummary(input)}`;
   const error = result.search?.message || result.grading_message;
   ui["run-error"].textContent = error || ""; ui["run-error"].hidden = !error;
   for (const driver of input.drivers) {

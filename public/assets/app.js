@@ -262,6 +262,7 @@ ui.clear.onclick = () => {
   ui["root-name"].textContent = "No game folder selected";
   ui["mod-query"].value = "";
   for (const control of document.querySelectorAll("input:not([type=file]):not([type=checkbox])")) control.value = control.defaultValue;
+  for (const id of ["driving-pace", "engine-mode"]) ui[id].value = ui[id].querySelector("option[selected]").value;
   for (const section of document.querySelectorAll("details")) section.open = false;
   ui.status.textContent = "Files and results cleared. Ready for a new session.";
   write_log("cleared");

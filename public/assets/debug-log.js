@@ -23,7 +23,7 @@ export function write_input_logs(result, { save, mod, calendar }) {
     team: input.team, season: input.season, week: input.week,
     calendar_default: calendar ? { week: calendar.event_week, circuit: calendar.name, testing: calendar.testing } : null,
     circuit: { file: result.fileNames[1], name: input.track.name, length_km: input.track.length_km, micro_sectors: input.track.micro_sectors.length },
-    compounds: input.tyres.map(tyre => tyre.name), weather: input.weather, settings: input.settings,
+    compounds: input.tyres.map(tyre => tyre.name), weather: input.weather, driving: input.driving, settings: input.settings,
     drivers: input.drivers.length, files: result.fileNames.length, constants: result.constantsCount });
   for (const driver of input.drivers) {
     write_log("driver_inputs", { validation: run, driver: driver.name, entry: driver.entry,

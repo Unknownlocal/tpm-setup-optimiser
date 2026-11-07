@@ -230,7 +230,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       await selectSave(files[0], signal);
     });
   };
-  for (const key of ["ambient", "water", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", ...setupAxes.map(axis => axis.control)]) {
+  for (const key of ["ambient", "water", "fuel-load", "driving-pace", "engine-mode", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", ...setupAxes.map(axis => axis.control)]) {
     ui[key].oninput = () => {
       // Scenario edits invalidate validation results, but folder/calendar work can finish.
       if (preparationSignal && !preparationSignal.aborted) invalidate();
@@ -249,7 +249,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     preparationSignal = signal;
     ui.status.textContent = isSearch ? "Preparing saved inputs for local setup search..." : "Building reference setups and grading the entered setup locally…";
     const numeric = id => ui[id].value.trim() ? Number(ui[id].value) : NaN;
-    const controls = ["ambient", "water", "session-seed", ...setupAxes.map(axis => axis.control),
+    const controls = ["ambient", "water", "fuel-load", "driving-pace", "engine-mode", "session-seed", ...setupAxes.map(axis => axis.control),
       ...(isSearch ? ["search-seconds", "search-refine", "search-stall", "search-idle"] : [])];
     for (const id of controls) if (!ui[id].checkValidity()) {
       const section = ui[id].closest("details"); if (section) section.open = true;
@@ -269,6 +269,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     const payload = { saveFile: save, trackFile: tracks.get(ui["track-choice"].value), files, seed, testing: calendarDefault?.testing === true,
       trackId: calendarDefault?.file === ui["track-choice"].value ? calendarDefault.track_id : undefined,
       weather: { temperature_c: ui.ambient.value.trim() || ui.ambient.validity.badInput ? numeric("ambient") : null, wetness_mm: numeric("water") }, compounds: compounds.values(), dataPack: mod.name,
+      driving: { fuel_kg: numeric("fuel-load"), pace: ui["driving-pace"].value, engine: ui["engine-mode"].value },
       settings: Object.fromEntries(setupAxes.map(axis => [axis.key, numeric(axis.control)])),
       search: limits };
     const prepared = await search.prepareInputs(payload, signal);
