@@ -9,18 +9,20 @@ const worker = new Worker("/assets/metadata-worker.js", { type: "module" });
 const requests = new Map();
 const dropSupported = typeof DataTransferItem !== "undefined" &&
   ["getAsEntry", "webkitGetAsEntry"].some(name => typeof DataTransferItem.prototype[name] === "function");
-let ready = false, busy = false, root = null, catalogue = null;
+let ready = false, busy = false, changingMemory = false, root = null, catalogue = null;
 let controller = new AbortController(), nextId = 0;
 const search = createSearchPool();
-const inputs = createInputPanel(ui, { job, request, invalidate, search, isReady: () => ready, isBusy: () => busy });
+const available = () => ready && !changingMemory;
+const inputs = createInputPanel(ui, { job, request, invalidate, search, isReady: available, isBusy: () => busy });
 
 function controls() {
   ui.status.closest(".activity").dataset.busy = String(busy);
   // Folder access starts with dropping the game root.
-  ui["mod-query"].disabled = !ready || !root;
-  ui.inspect.disabled = !ready || busy || !root || !ui["mod-query"].value.trim();
-  ui.clear.disabled = !ready;
-  ui["drop-root"].setAttribute("aria-disabled", String(!ready || !dropSupported));
+  ui["mod-query"].disabled = !available() || !root;
+  ui.inspect.disabled = !available() || busy || !root || !ui["mod-query"].value.trim();
+  ui.clear.disabled = !available();
+  ui["memory-saving"].disabled = !available() || busy || search.limit === 1;
+  ui["drop-root"].setAttribute("aria-disabled", String(!available() || !dropSupported));
   inputs.refreshControls();
 }
 
@@ -73,6 +75,29 @@ function request(type, payload, signal) {
   });
 }
 
+function memoryNote() {
+  ui["memory-note"].textContent = search.limit === 1 ? "This device uses one calculation worker."
+    : `Using ${search.size === 1 ? "one calculation worker" : "two calculation workers"}.`;
+}
+
+ui["memory-saving"].onchange = async () => {
+  // Block new work without invalidating selected files or completed results.
+  changingMemory = true; controls();
+  ui["memory-note"].textContent = "Changing calculation workers...";
+  try {
+    await search.setMemorySaving(ui["memory-saving"].checked);
+    memoryNote();
+    write_log("memory_mode_changed", { memory_saving: search.size === 1, search_workers: search.size });
+  } catch (error) {
+    memoryNote();
+    ui["memory-note"].textContent += ` Could not change memory mode: ${error.message}`;
+    write_log("memory_mode_unavailable", { message: error.message, search_workers: search.size });
+  } finally {
+    ui["memory-saving"].checked = search.size === 1;
+    changingMemory = false; controls(); inputs.selectDefaultSave();
+  }
+};
+
 worker.onmessage = async ({ data }) => {
   if (data.ready) {
     let engines;
@@ -87,6 +112,8 @@ worker.onmessage = async ({ data }) => {
       : "This browser does not support game-folder drops.";
     controls();
     ui["engine-note"].textContent = "Calculation engine ready. Grading and search run in your browser.";
+    ui["memory-saving"].checked = search.limit === 1;
+    memoryNote();
     write_log("ready", { folder_picker: false, folder_drop: dropSupported, lap_engine: engines[0], search_workers: search.size });
     return;
   }
@@ -170,7 +197,7 @@ for (const type of ["dragover", "drop"]) document.addEventListener(type, event =
 const rootDrop = ui["drop-root"];
 rootDrop.ondragover = event => {
   event.preventDefault();
-  if (ready && dropSupported) {
+  if (available() && dropSupported) {
     event.dataTransfer.dropEffect = "copy";
     rootDrop.classList.add("drag-over");
   }
@@ -179,7 +206,7 @@ rootDrop.ondragleave = () => rootDrop.classList.remove("drag-over");
 rootDrop.ondrop = event => {
   event.preventDefault();
   rootDrop.classList.remove("drag-over");
-  if (!ready || !dropSupported) return;
+  if (!available() || !dropSupported) return;
   job(signal => selectRoot(droppedFolder(event.dataTransfer), signal));
 };
 

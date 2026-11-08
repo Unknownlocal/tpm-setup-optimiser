@@ -43,6 +43,15 @@ uses the remaining share. The default is 85% pace and 15% preference. This affec
 grading and setup search, including AVG_DRY. Custom weights change optimiser
 grades; they do not change the predicted lap time for a fixed setup.
 
+Calculation performance includes a memory-saving mode. It uses one calculation
+worker for all drivers; normal mode uses up to two. Switching modes keeps selected
+files and existing results. A single worker may find fewer improvements within
+the same time limit. Restoring the second worker may need internet access; if it
+cannot load, the first worker remains usable. Reset keeps the selected mode;
+reloading the page restores the default. Change modes while calculations are idle.
+The default workers are still preloaded on page load; enabling memory-saving
+mode releases the spare runtime.
+
 Saves must use schema version 3, Formula entries, the standard car profile and
 fitted chassis baseline snapshots. The data mod must match the save. The build
 contains no game data or original game binaries. Lap estimates use the session
