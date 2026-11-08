@@ -68,6 +68,7 @@ def digest(path):
 def source_hashes():
     files = [PUBLIC / name for name in APP_FILES]
     files += [ROOT / "notices/dotnet" / name for name in NOTICES]
+    files.append(ROOT / "LICENSE")
     files += [ROOT / name for name in ("vercel.json", "engine/global.json", "tools/build_engine.py", "tools/build_release.py", "tools/build_vercel.py")]
     for folder in ("Core", "Browser"):
         files += [path for path in (ROOT / "engine" / folder).rglob("*")
@@ -125,6 +126,7 @@ def package_release(sources):
     """Assemble a clean staging folder before replacing the previous generated output."""
     files = {name: checked_file(PUBLIC / name) for name in APP_FILES}
     files.update(engine_files())
+    files["LICENSE"] = checked_file(ROOT / "LICENSE")
     files.update({f"engine/notices/{name}": checked_file(ROOT / "notices/dotnet" / name) for name in NOTICES})
     check_references(files)
     headers = {item["key"]: item["value"] for item in json.loads((ROOT / "vercel.json").read_text())["headers"][0]["headers"]}
