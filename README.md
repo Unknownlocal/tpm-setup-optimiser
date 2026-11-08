@@ -49,6 +49,13 @@ in C#. Development included read-only inspection of the installed game's Python
 bytecode, including its fallback lap solver. This was not a clean-room process:
 the implementation was informed by the inspected game logic.
 
+Setup finding uses **stochastic local search**. It starts from reference setups,
+improves individual settings (coordinate hill climbing), and explores random
+alternatives. Cached scores avoid repeated calculations; score-bound pruning
+skips candidates whose best possible score falls below the current best. Time,
+refinement and stall limits bound the search. Results are the best found within
+those limits, without a guarantee of the global optimum.
+
 Lap times, reference setups and grades were compared with the unchanged game
 using selected saves, circuits, tyre compounds and weather conditions. These
 checks support the tested Formula scenarios; they do not prove complete
