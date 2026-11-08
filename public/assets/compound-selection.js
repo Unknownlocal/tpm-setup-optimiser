@@ -7,8 +7,9 @@ export function createCompoundSelection(ui, changed) {
   function values() { return [...choices.querySelectorAll("input:checked")].map(control => control.value); }
   function note() {
     const selected = values();
+    const dry = DRY_COMPOUNDS.map(id => options.find(option => option.id === id)?.label);
     ui["compound-help"].textContent = !options.length ? "Select a data mod to load its tyre compounds."
-      : `${selected.length} of ${options.length} compounds selected.${!selected.length ? " Select at least one to calculate." : ""}${DRY_COMPOUNDS.every(id => options.some(option => option.id === id)) ? " AVG_DRY is included when soft, medium and hard are selected." : ""}`;
+      : `${selected.length} of ${options.length} compounds selected.${!selected.length ? " Select at least one to calculate." : ""}${dry.every(Boolean) ? ` Selecting ${dry.join(" / ")} also adds AVG_DRY: one shared setup for all three.` : ""}`;
   }
   group.oninput = () => { note(); changed(); };
   return {

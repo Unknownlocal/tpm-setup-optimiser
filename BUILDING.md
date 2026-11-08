@@ -23,10 +23,10 @@ python -m pip install "flask>=3.1,<4"
 python -m flask --app "main:create_app('.vercel/output/static')" run --port 5080
 ```
 
-Open http://127.0.0.1:5080. Choose or drop the game folder, select the save's data
+Open http://127.0.0.1:5080. Drop the game folder, select the save's data
 mod and a save, then check the circuit and conditions. **Find setups** searches;
 **Grade entered setup** scores the entered settings. Copy/download stays local.
-Firefox uses folder drops; browsers with a directory picker can also use it.
+The mod must be inside that game folder; use its name or relative path.
 The save list is filtered by the selected mod folder's identifier in `data_pack`.
 When the scan finishes, the most recently modified matching save is selected
 unless you have already chosen or cleared a save yourself.

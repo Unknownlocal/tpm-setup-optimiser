@@ -1,23 +1,9 @@
-export function handleFolder(handle) {
-  return {
-    name: handle.name,
-    async directory(name) { return handleFolder(await handle.getDirectoryHandle(name)); },
-    async file(name) { return (await handle.getFileHandle(name)).getFile(); },
-    async *entries() {
-      for await (const [name, entry] of handle.entries()) {
-        yield entry.kind === "directory" ? { name, folder: handleFolder(entry) }
-          : { name, file: () => entry.getFile() };
-      }
-    },
-  };
-}
-
 export function entryFolder(entry) {
   // Dropped entries expose immediate children on demand, not a recursive FileList.
   async function child(name) {
     let count = 0;
     for await (const candidate of folder.entries()) {
-      if (++count > 5000) throw new Error("Folder lookup limit reached. Drop the mod folder directly.");
+      if (++count > 5000) throw new Error("Folder lookup limit reached. This folder has too many immediate entries.");
       if (candidate.name === name) return candidate;
     }
     throw new DOMException("The requested entry was not found.", "NotFoundError");

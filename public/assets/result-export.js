@@ -23,7 +23,7 @@ export function createResultExport(ui) {
     document.body.append(link); link.click(); link.remove();
     // Let the browser start the local download before releasing its temporary URL.
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    ui["export-note"].textContent = "Results downloaded locally.";
+    ui["export-note"].textContent = "Results file prepared for download.";
   };
   function clear() {
     ui["result-text"].value = ui["export-note"].textContent = "";

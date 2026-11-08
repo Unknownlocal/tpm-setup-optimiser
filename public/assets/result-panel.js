@@ -65,7 +65,7 @@ export function renderResults(ui, result, { validation, diagnostics = true }) {
         `Warmed tyres ${row.tyre_temperature_c.toFixed(1)} °C · Balance ${row.balance.toFixed(1)} · Traction ${row.traction.toFixed(1)}.`,
       ]);
       if (result.search) {
-        const reasons = { perfect: "Maximum rating reached", refinement: "Refinement lap limit reached", stall: "No further material improvement", idle: "No new laps to evaluate" };
+        const reasons = { perfect: "Maximum rating reached", refinement: "Refinement lap limit reached", stall: "No gain of 0.01 points within the lap limit", idle: "No new laps or 0.01-point gain within the batch limit" };
         card.append(element("p", `${reasons[row.stop_reason] || "Best result so far"}${row.refinement ? ` · ${row.refinement.laps} refinement laps` : ""}.`, "hint"));
       }
       grid.append(card);

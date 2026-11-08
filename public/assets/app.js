@@ -1,4 +1,4 @@
-import { droppedFolder, handleFolder, readCatalogue, resolveFolder, scanMetadata } from "./folder-access.js";
+import { droppedFolder, readCatalogue, resolveFolder, scanMetadata } from "./folder-access.js";
 import { parseModQuery } from "./mod-resolver.js";
 import { createInputPanel } from "./input-panel.js";
 import { write_log } from "./debug-log.js";
@@ -7,22 +7,20 @@ import { createSearchPool } from "./search-pool.js";
 const ui = Object.fromEntries([...document.querySelectorAll("[id]")].map(element => [element.id, element]));
 const worker = new Worker("/assets/metadata-worker.js", { type: "module" });
 const requests = new Map();
-const supported = typeof window.showDirectoryPicker === "function";
 const dropSupported = typeof DataTransferItem !== "undefined" &&
   ["getAsEntry", "webkitGetAsEntry"].some(name => typeof DataTransferItem.prototype[name] === "function");
-let ready = false, busy = false, root = null, external = null, catalogue = null;
+let ready = false, busy = false, root = null, catalogue = null;
 let controller = new AbortController(), nextId = 0;
 const search = createSearchPool();
 const inputs = createInputPanel(ui, { job, request, invalidate, search, isReady: () => ready, isBusy: () => busy });
 
 function controls() {
   ui.status.closest(".activity").dataset.busy = String(busy);
-  ui["choose-root"].disabled = !ready || !supported;
-  ui["choose-mod"].disabled = !ready || !supported;
+  // Folder access starts with dropping the game root.
   ui["mod-query"].disabled = !ready || !root;
-  ui.inspect.disabled = !ready || busy || (!external && (!root || !ui["mod-query"].value.trim()));
-  ui.clear.disabled = !ready || (!supported && !dropSupported);
-  for (const id of ["drop-root", "drop-mod"]) ui[id].setAttribute("aria-disabled", String(!ready || !dropSupported));
+  ui.inspect.disabled = !ready || busy || !root || !ui["mod-query"].value.trim();
+  ui.clear.disabled = !ready;
+  ui["drop-root"].setAttribute("aria-disabled", String(!ready || !dropSupported));
   inputs.refreshControls();
 }
 
@@ -85,12 +83,11 @@ worker.onmessage = async ({ data }) => {
       write_log("engine_unavailable", { message: error.message }); controls(); return;
     }
     ready = true;
-    ui.status.textContent = supported ? "Ready. Choose or drop your game folder to begin." : dropSupported
-      ? "Ready. Drop your game folder or a mod folder to begin."
-      : "This browser does not support local folder selection or folder drops.";
+    ui.status.textContent = dropSupported ? "Ready. Drop your game folder to begin."
+      : "This browser does not support game-folder drops.";
     controls();
     ui["engine-note"].textContent = "Calculation engine ready. Grading and search run in your browser.";
-    write_log("ready", { folder_picker: supported, folder_drop: dropSupported, lap_engine: engines[0], search_workers: search.size });
+    write_log("ready", { folder_picker: false, folder_drop: dropSupported, lap_engine: engines[0], search_workers: search.size });
     return;
   }
   const pending = requests.get(data.id);
@@ -149,65 +146,44 @@ async function inspectFolder(folder, label, signal) {
   ui.status.textContent = `Inspection complete${scan.partial || scan.unreadable ? " (partial)" : ""}. Processed locally by a browser worker.`;
 }
 
-async function selectFolder(folder, isRoot, signal) {
+async function selectRoot(folder, signal) {
   signal.throwIfAborted();
-  if (isRoot) {
-    try { await folder.directory("data"); }
-    catch { throw new Error("Choose the game root containing data/, rather than a data mod folder."); }
-  }
+  try { await folder.directory("data"); }
+  catch { throw new Error("Drop the game root containing data/, rather than a data mod folder."); }
   signal.throwIfAborted();
-  if (isRoot) {
-    root = folder;
-    external = null;
-    catalogue = null;
-    ui["root-name"].textContent = folder.name;
-    ui["mod-query"].value = "";
-    await inputs.setRoot(folder, signal);
-    ui.status.textContent = "Game folder selected. Enter a mod folder, relative path or title.";
-  } else {
-    external = folder;
-    inputs.resetMod();
-    ui["mod-query"].value = folder.name;
-    ui.status.textContent = `Separate folder selected: ${folder.name}. Click Select mod.`;
-  }
-  write_log("folder_selected", { role: isRoot ? "game_root" : "data_mod", name: folder.name });
+  root = folder;
+  catalogue = null;
+  ui["root-name"].textContent = folder.name;
+  ui["mod-query"].value = "";
+  await inputs.setRoot(folder, signal);
+  ui.status.textContent = "Game folder selected. Enter a mod folder, relative path or title.";
+  write_log("folder_selected", { role: "game_root", name: folder.name });
 }
 
-for (const [button, isRoot] of [["choose-root", true], ["choose-mod", false]]) {
-  ui[button].onclick = () => job(async signal => {
-    const handle = await window.showDirectoryPicker({ mode: "read" });
-    await selectFolder(handleFolder(handle), isRoot, signal);
-  });
-}
-ui["browser-note"].hidden = supported;
-ui["browser-note"].textContent = dropSupported
-  ? "The folder picker is unavailable in this browser. Drag a folder from your file manager into one of the marked areas."
-  : "This browser does not provide folder picking or folder entries from drag-and-drop.";
+ui["browser-note"].hidden = dropSupported;
+ui["browser-note"].textContent = "Use a browser that supports dragging folders from your file manager.";
 
 // Prevent a dropped file outside the targets from navigating away from the page.
 for (const type of ["dragover", "drop"]) document.addEventListener(type, event => {
   if ([...event.dataTransfer.types].includes("Files")) event.preventDefault();
 });
-for (const [id, isRoot] of [["drop-root", true], ["drop-mod", false]]) {
-  const target = ui[id];
-  target.ondragover = event => {
-    event.preventDefault();
-    if (ready && dropSupported) {
-      event.dataTransfer.dropEffect = "copy";
-      target.classList.add("drag-over");
-    }
-  };
-  target.ondragleave = () => target.classList.remove("drag-over");
-  target.ondrop = event => {
-    event.preventDefault();
-    target.classList.remove("drag-over");
-    if (!ready || !dropSupported) return;
-    job(signal => selectFolder(droppedFolder(event.dataTransfer), isRoot, signal));
-  };
-}
+const rootDrop = ui["drop-root"];
+rootDrop.ondragover = event => {
+  event.preventDefault();
+  if (ready && dropSupported) {
+    event.dataTransfer.dropEffect = "copy";
+    rootDrop.classList.add("drag-over");
+  }
+};
+rootDrop.ondragleave = () => rootDrop.classList.remove("drag-over");
+rootDrop.ondrop = event => {
+  event.preventDefault();
+  rootDrop.classList.remove("drag-over");
+  if (!ready || !dropSupported) return;
+  job(signal => selectRoot(droppedFolder(event.dataTransfer), signal));
+};
 
 ui.inspect.onclick = () => job(async signal => {
-  if (external) return inspectFolder(external, external.name + " (separate folder)", signal);
   const query = ui["mod-query"].value.trim();
   const { parts, explicit, titleOnly } = parseModQuery(query);
   const path = explicit ? parts : ["data", ...parts];
@@ -228,7 +204,7 @@ ui.inspect.onclick = () => job(async signal => {
     return inspectFolder(await resolveFolder(root, matches[0].path.split("/")), matches[0].path, signal);
   }
   ui.status.textContent = matches.length ? "Choose a matching mod to inspect." :
-    "No matching title in the indexed metadata. Try its folder name/path or choose the mod folder directly.";
+    "No matching title in the indexed metadata. Try its folder name or a relative path inside the game folder.";
   for (const match of matches.slice(0, 20)) {
     const button = document.createElement("button");
     button.type = "button";
@@ -245,7 +221,6 @@ ui.inspect.onclick = () => job(async signal => {
 ui["mod-query"].oninput = () => {
   invalidate();
   inputs.resetMod();
-  external = null;
   ui.status.textContent = "Ready to inspect the entered mod.";
   controls();
 };
@@ -257,7 +232,7 @@ ui.cancel.onclick = () => {
 };
 ui.clear.onclick = () => {
   invalidate();
-  root = external = catalogue = null;
+  root = catalogue = null;
   inputs.clear();
   ui["root-name"].textContent = "No game folder selected";
   ui["mod-query"].value = "";

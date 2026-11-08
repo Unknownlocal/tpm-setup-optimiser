@@ -13,9 +13,10 @@
   <main>
     <header class="page-header">
       <p class="eyebrow">TEAM PRINCIPAL · SETUP OPTIMISER</p>
-      <h1>Ready for the next session.</h1>
+      <p class="eyebrow">Currently available for Formula Racing only - Other game modes currently untested</p>
+      <h1>Team Principal: A Racing Manager - Setup Optimiser</h1>
       <p class="intro">Choose your save and its data mod. Find a setup for every driver on your team.</p>
-      <p class="privacy">Read-only access · Files stay in your browser · Selections are not saved</p>
+      <p class="privacy">A tool by Unknownlocal to assist with setup optimisation beyond the default in-game options</p>
     </header>
     <div class="activity" aria-label="Application status">
       <div>
@@ -30,33 +31,28 @@
     <p id="browser-note" class="notice" hidden></p>
     <section class="panel" aria-labelledby="selection-title">
       <div class="section-heading"><span class="step" aria-hidden="true">1</span><h2 id="selection-title">Choose your local files</h2></div>
-      <p class="hint">Start with the game folder, then select the data mod used by your save.</p>
-      <div class="folder-row">
-        <button id="choose-root" type="button" disabled>Choose game folder</button>
-        <span id="root-name">No game folder selected</span>
-      </div>
+      <p class="hint">Drop the game folder, then select the data mod used by your save.</p>
+      <p id="root-name" class="selection-note">No game folder selected</p>
       <div class="drop-targets">
-        <div id="drop-root" class="drop-zone" role="group" aria-label="Drop game folder" aria-disabled="true">
+        <div id="drop-root" class="drop-zone" role="group" aria-label="Drop game folder" aria-disabled="true" aria-describedby="folder-help folder-privacy">
           <strong>Drop game folder here</strong><span>Find saves and search data mods by name or path.</span>
         </div>
-        <div id="drop-mod" class="drop-zone" role="group" aria-label="Drop mod folder" aria-disabled="true">
-          <strong>Or drop a data mod folder</strong><span>Use a mod installed separately from the game.</span>
-        </div>
       </div>
-      <p class="hint">If a folder picker refuses Program Files, drag the folder from your file manager instead.</p>
+      <p id="folder-help" class="hint">Drag the game folder from your file manager. This lets the optimiser read the files needed for calculations.</p>
+      <p id="folder-privacy" class="hint">All calculations stay in the browser on your PC - nothing is sent elsewhere.</p>
       <label for="mod-query">Data mod name or relative folder path</label>
       <div class="mod-search">
         <input id="mod-query" maxlength="256" placeholder="&lt;mod-name&gt;" disabled aria-describedby="query-help">
         <button id="inspect" type="button" disabled>Select mod</button>
-        <button id="choose-mod" type="button" class="secondary" disabled>Choose mod folder</button>
       </div>
-      <p id="query-help" class="hint">Examples: <code>&lt;mod-name&gt;</code>, <code>&lt;mod-json-name&gt;</code> or <code>data/&lt;mod-folder&gt;</code>. You can also choose a mod folder outside the game.</p>
+      <p id="query-help" class="hint">Use a Workshop title, folder name or relative path inside the game folder. Examples: <code>&lt;mod-name&gt;</code>, <code>&lt;mod-json-name&gt;</code> or <code>data/&lt;mod-folder&gt;</code>.</p>
       <p id="input-mod" class="selection-note"></p>
       <p id="catalogue-note" class="hint"></p>
       <div id="matches" aria-label="Matching mods"></div>
       <div class="save-selection">
         <label for="save-choice">Saves for the selected data mod</label>
-        <select id="save-choice" disabled><option value="">Select a data mod first…</option></select>
+        <select id="save-choice" disabled aria-describedby="save-help save-note"><option value="">Select a data mod first…</option></select>
+        <p id="save-help" class="hint">The most recently modified matching save is selected by default. You can select another from the list or choose a JSON save file.</p>
         <p id="save-note" class="hint" role="status" aria-live="polite"></p>
         <p id="save-error" class="notice" role="alert" hidden></p>
         <div class="folder-row">
@@ -81,10 +77,10 @@
         <div id="compound-choices" class="compound-choices"></div>
       </fieldset>
       <p id="compound-help" class="hint">Select a data mod to load its tyre compounds.</p>
-      <p class="hint">Enter the game's displayed temperature, or leave it blank for a generated session average. Water depth 0 means dry; values up to 5 mm are supported.</p>
+      <p class="hint">Use the game's displayed average ambient temperature, or leave it blank to generate a session average. Water depth 0 mm means dry; values up to 5 mm are supported.</p>
       <details>
         <summary>Entered setup</summary>
-        <p class="hint">Grade these values directly, or use them as a starting point when finding setups.</p>
+        <p class="hint">Grade entered setup scores these settings. Find setups also considers them as a starting point.</p>
         <div id="setup-fields" class="input-grid"></div>
         <p class="hint">Front pressure applies to both front tyres; rear pressure applies to both rear tyres.</p>
       </details>
@@ -96,7 +92,7 @@
           <label>Engine mode<select id="engine-mode" required><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label>
           <label>Session seed (optional)<input id="session-seed" type="number" min="0" max="999999" step="1" placeholder="Random on each run"></label>
         </div>
-        <p class="hint">Applied to every driver, compound and reference lap. Fuel stays constant over the projected lap; fuel burn, wear and failures are not simulated. A fixed seed repeats the scenario and search proposals.</p>
+        <p class="hint">Applied to every driver and selected compound, including reference laps. Fuel stays constant during each estimated lap; fuel use, wear and failures are not simulated. A fixed seed repeats the random choices, but time-limited search results can still vary.</p>
       </details>
       <details>
         <summary>Advanced grading settings</summary>
@@ -111,7 +107,7 @@
         </div>
         <p id="weight-default" class="hint">Default: 85% pace and 15% driver preference, matching the vanilla game's setup grading calculation.</p>
         <p id="weight-note" class="hint" role="status" aria-live="polite">Weights: 85% pace / 15% driver preference.</p>
-        <p class="hint">Changes grading and the search objective, including AVG_DRY. Custom weights affect optimiser grades; the game's setup panel uses its own grading. Reference laps and the predicted time for a fixed setup stay unchanged.</p>
+        <p class="hint">Set the pace share; driver preference gets the rest. This controls what Find setups favours, including AVG_DRY. Custom weights change optimiser grades. Reference laps and the predicted time for a fixed setup stay unchanged.</p>
       </details>
       <details>
         <summary>Advanced search settings</summary>
@@ -119,14 +115,15 @@
           <label>Search time limit (seconds)<input id="search-seconds" type="number" min="0.1" max="300" step="any" value="15" required></label>
           <label>Refinement laps after S+<input id="search-refine" type="number" min="2" max="100000" step="1" value="500" required></label>
           <label>Laps without improvement<input id="search-stall" type="number" min="1" max="100000" step="1" value="100" required></label>
-          <label>Batches without new laps<input id="search-idle" type="number" min="1" max="100000" step="1" value="64" required></label>
+          <label>Batches without new laps or gains<input id="search-idle" type="number" min="1" max="100000" step="1" value="64" required></label>
         </div>
-        <p class="hint">The search timer starts after reference setups are ready; preparation takes additional time.</p>
-        <p class="hint">After the first S+, refinement counts newly simulated laps. A cumulative 0.01-point gain resets the no-improvement count. Limits are checked after batches. Stop keeps completed results.</p>
+        <p class="hint">The time limit covers the search only. Preparing reference setups takes extra time.</p>
+        <p class="hint">For each result, refinement starts at its first S+. Only newly calculated laps count towards the lap limits. A total gain of 0.01 points resets the no-improvement count.</p>
+        <p class="hint">A batch is a group of candidate settings. After S+, the batch limit stops repeated work with no new laps or 0.01-point gain. Limits are checked between batches, so they can be exceeded slightly. Stop keeps completed results.</p>
       </details>
       <div class="calculation-actions">
         <div><button id="search-setups" type="button" disabled>Find setups</button><p class="hint">Search for better settings for each driver and compound.</p></div>
-        <div><button id="prepare-inputs" type="button" class="secondary" disabled>Grade entered setup</button><p class="hint">Score the entered values without searching for improvements.</p></div>
+        <div><button id="prepare-inputs" type="button" class="secondary" disabled>Grade entered setup</button><p class="hint">Grade the entered settings for each driver and selected compound.</p></div>
       </div>
     </section>
     <section id="input-results" class="panel results-panel" aria-labelledby="input-result-title" hidden>
@@ -134,7 +131,7 @@
       <p id="input-summary" class="selection-note"></p>
       <p id="run-summary"></p>
       <p id="run-error" class="notice" role="alert" hidden></p>
-      <p class="hint">Grades and lap times estimate fully warmed tyres. The game's nominal setup panel can show a different grade.</p>
+      <p class="hint">Estimates use fresh, fully warmed tyres. The game's setup panel may show a different grade.</p>
       <div class="actions export-actions">
         <button id="copy-results" type="button" class="secondary" disabled>Copy results</button>
         <button id="download-results" type="button" class="secondary" disabled>Download results (.txt)</button>
@@ -145,8 +142,10 @@
       <details class="assumptions">
         <summary>How to read these estimates</summary>
         <p>Grades use the selected pace and driver-preference weights; the default is 85% pace and 15% preference. Custom weights change the optimiser's grades. S+ starts at 98/100. AVG_DRY uses one shared setup and scores it separately on soft, medium and hard tyres.</p>
-        <p>Uses the parts fitted in the save, including development gains, understanding and chassis limits. Future development is not simulated. Supported saves use Formula entries, a standard car profile and fitted chassis baseline snapshots.</p>
-        <p>Lap estimates use fresh, fully warmed tyres and the selected fuel, pace and engine mode. The defaults are 15 kg fuel, push pace and medium engine. Fuel stays constant over each projected lap. Balanced ERS uses fitted equipment under the active regulations. Saved tyre-supplier ratings and contract grip bonuses are applied. Each projected lap starts with a charged battery. Traffic, tyre wear, failures and DRS are excluded.</p>
+        <p>Pace compares the predicted lap with a reference lap for the same driver and compound. Driver preference measures how closely balance and traction match the driver's wishes.</p>
+        <p>Uses each driver's fitted parts, saved development, part understanding and chassis limits. Future upgrades are not predicted. Supported saves need Formula entries, standard car rules and complete fitted-part data.</p>
+        <p>Lap estimates use fresh, fully warmed tyres and the selected fuel, pace and engine mode. The defaults are 15 kg fuel, push pace and medium engine. Fuel stays constant during each estimated lap. Traffic, tyre wear, failures and DRS are excluded.</p>
+        <p>ERS follows the saved rules: fitted equipment for open development, the standard unit for spec rules, or none when banned. Enabled ERS uses balanced deployment and starts each lap charged. Saved tyre-supplier ratings and contract grip bonuses are applied.</p>
       </details>
     </section>
     <details id="results" class="panel inspection-panel" hidden>
@@ -160,8 +159,8 @@
         <tbody id="files"></tbody>
       </table></div>
     </details>
-    <footer>Files are read locally and are never uploaded or executed. Reset clears the app's file selections and results.
-      Diagnostic JSON stays in the browser console for copying when needed.</footer>
+    <footer>Game files are read only and stay on your device. Reset clears the selected files and results.
+      Diagnostic details stay in your browser console for copying if needed.</footer>
     <noscript>JavaScript is needed to read local files and calculate setups in your browser.</noscript>
   </main>
 </body>

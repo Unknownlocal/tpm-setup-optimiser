@@ -48,8 +48,8 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     const shown = new Set([...ui["save-choice"].options].map(option => option.value));
     for (const name of state.matches.keys()) if (!shown.has(name)) ui["save-choice"].add(new Option(name, name));
     ui["save-choice"].value = save && state.matches.get(save.name) === save ? save.name : "";
-    ui["save-note"].textContent = !state.pack ? `${state.total} saves found. Select a data mod to filter them, or choose one JSON save.`
-      : `${state.matches.size} matching saves; ${state.checked}/${state.total} checked.${state.unreadable ? ` ${state.unreadable} unreadable or missing a pack identifier.` : ""}${state.scanning ? " Checking locally in the background…" : !state.complete && state.checked < state.total ? " Scan stopped. Select the mod again to check the rest." : ""}`;
+    ui["save-note"].textContent = !state.pack ? `${state.total} save files found. Select a data mod to show matches, or choose a JSON save file.`
+      : `${state.matches.size} matching saves; ${state.checked}/${state.total} files checked.${state.unreadable ? ` ${state.unreadable} could not be read or had no data-mod name.` : ""}${state.scanning ? " Checking locally in the background…" : !state.complete && state.checked < state.total ? " Scan stopped. Select the mod again to check the remaining files." : ""}`;
     if (state.complete && !save && !saveChosen) defaultSave = state.latest;
     refreshControls();
     selectDefaultSave();
@@ -76,7 +76,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
   }
   function refreshWeights() {
     ui["weight-note"].textContent = ui["pace-weight"].validity.valid
-      ? `${gradingSummary({ pace_weight_pct: ui["pace-weight"].valueAsNumber })}. Driver preference uses the remaining share.`
+      ? `${gradingSummary({ pace_weight_pct: ui["pace-weight"].valueAsNumber })}.`
       : "Enter a pace weight from 0 to 100 percent.";
   }
   function selectDefaultSave() {
@@ -138,7 +138,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       // Metadata inspection remains useful for folders without circuit definitions.
       tracks.clear(); compounds.set();
       options(ui["track-choice"], "No circuits available");
-      ui["track-note"].textContent = `Input preparation is unavailable for this folder: ${error.message}`;
+      ui["track-note"].textContent = `Cannot use this mod for setup calculations: ${error.message}`;
     }
     refreshControls();
   }

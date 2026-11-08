@@ -48,6 +48,6 @@ export function resultsText(result) {
     for (const axis of input.setupAxes) lines.push(`  ${axis.label}: ${settingText(axis, (row.settings || input.settings)[axis.key])}`);
     lines.push("");
   }
-  lines.push("Predicted laps use fresh, fully warmed tyres and constant fuel. Grades can differ from the game's nominal setup panel.");
+  lines.push("Predicted laps use fresh, fully warmed tyres and constant fuel. The game's setup panel may show a different grade.");
   return lines.join("\n");
 }
