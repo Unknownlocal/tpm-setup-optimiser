@@ -76,14 +76,15 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
   }
   function refreshControls() {
     refreshWeights();
-    ui["choose-save"].disabled = !isReady();
+    ui["save-selection"].hidden = mod === null;
+    ui["choose-save"].disabled = !isReady() || !mod;
     ui["save-choice"].disabled = !isReady() || !catalogue.matches.size;
     ui["track-choice"].disabled = !isReady() || !tracks.size;
     ui["search-setups"].disabled = ui["prepare-inputs"].disabled = !isReady() || isBusy() || !save || !mod || !ui["track-choice"].value || !compounds.values().length;
     compounds.enable(isReady() && mod !== null);
     // Stop also covers background metadata work, independently of calculations.
     ui.cancel.disabled = !isBusy() && !catalogue.scanning;
-    ui["drop-save"].setAttribute("aria-disabled", String(!isReady()));
+    ui["drop-save"].setAttribute("aria-disabled", String(!isReady() || !mod));
   }
   function refreshWeights() {
     ui["weight-note"].textContent = ui["pace-weight"].validity.valid
@@ -152,7 +153,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     } catch (error) {
       signal.throwIfAborted();
       // Metadata inspection remains useful for folders without circuit definitions.
-      tracks.clear(); allTracks.clear(); compounds.set(); setSetupAxes();
+      mod = null; tracks.clear(); allTracks.clear(); compounds.set(); setSetupAxes();
       options(ui["track-choice"], "No circuits available");
       ui["track-note"].textContent = `Cannot use this mod for setup calculations: ${error.message}`;
     }
@@ -263,10 +264,10 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     });
   };
   const drop = ui["drop-save"];
-  drop.ondragover = event => { event.preventDefault(); if (isReady()) event.dataTransfer.dropEffect = "copy"; };
+  drop.ondragover = event => { event.preventDefault(); if (isReady() && mod) event.dataTransfer.dropEffect = "copy"; };
   drop.ondrop = event => {
     event.preventDefault();
-    if (!isReady()) return;
+    if (!isReady() || !mod) return;
     const files = [...event.dataTransfer.files];
     job(async signal => {
       if (files.length !== 1) throw new Error("Drop exactly one JSON save.");
