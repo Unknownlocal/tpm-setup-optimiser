@@ -545,6 +545,10 @@ th {
   font-size: .9rem;
 }
 
+footer a {
+  color: var(--text);
+}
+
 footer {
   max-width: 820px;
   margin: 28px 0;

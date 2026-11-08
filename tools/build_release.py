@@ -6,6 +6,7 @@ published engine's declared resources enter .vercel/output/static.
 """
 import base64
 import hashlib
+from html.parser import HTMLParser
 import json
 from pathlib import Path
 import re
@@ -29,6 +30,22 @@ APP_FILES = (
     )),
 )
 NOTICES = ("LICENSE.TXT", "THIRD-PARTY-NOTICES.TXT")
+
+
+class AssetReferences(HTMLParser):
+    """Collect HTML file references, leaving external page navigation alone."""
+
+    def __init__(self):
+        super().__init__()
+        self.references = []
+
+    def handle_starttag(self, tag, attrs):
+        for attribute, value in attrs:
+            if attribute not in ("src", "href") or not value:
+                continue
+            if tag == "a" and attribute == "href" and value.startswith(("https://", "http://")):
+                continue
+            self.references.append(value)
 
 
 def checked_file(path):
@@ -92,8 +109,13 @@ def check_references(files):
     for name in APP_FILES:
         source = PUBLIC / name
         text = source.read_text(encoding="utf-8") if source.suffix in (".js", ".html") else ""
-        pattern = r'''(?:from\s*|import\s*\(?\s*|new\s+Worker\s*\(\s*)["']([^"']+)["']''' if source.suffix == ".js" else r'''(?:src|href)=["']([^"']+)["']'''
-        for reference in re.findall(pattern, text):
+        if source.suffix == ".html":
+            parser = AssetReferences()
+            parser.feed(text)
+            references = parser.references
+        else:
+            references = re.findall(r'''(?:from\s*|import\s*\(?\s*|new\s+Worker\s*\(\s*)["']([^"']+)["']''', text)
+        for reference in references:
             target = PUBLIC / reference.lstrip("/") if reference.startswith("/") else source.parent / reference
             if not target.resolve().is_relative_to(PUBLIC) or target.resolve().relative_to(PUBLIC).as_posix() not in files:
                 raise ValueError(f"Unlisted browser asset in {name}: {reference}")
