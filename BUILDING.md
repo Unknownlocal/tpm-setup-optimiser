@@ -52,6 +52,14 @@ reloading the page restores the default. Change modes while calculations are idl
 The default workers are still preloaded on page load; enabling memory-saving
 mode releases the spare runtime.
 
+Calculation performance also includes a numeric cache limit, from 100 to 100,000
+scored setups per driver and compound, default 4,096. Reset restores this default.
+The limit applies to Find setups and is recorded in run details and exports. Older
+evaluations are discarded in batches; each compound's best result is kept
+separately, including improvements found through AVG_DRY. An evicted setup may
+need another lap calculation if revisited. Search caches are released when the
+job closes; results remain available in the page.
+
 Saves must use schema version 3, Formula entries, the standard car profile and
 fitted chassis baseline snapshots. The data mod must match the save. The build
 contains no game data or original game binaries. Lap estimates use the session

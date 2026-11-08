@@ -78,6 +78,7 @@ export function renderResults(ui, result, { validation, diagnostics = true }) {
     `Saved rules: ${input.activePolicies.car.name}; ${input.activePolicies.tyres.name}.`,
     `Seed ${result.prediction.seed} · Initial wind ${result.prediction.wind.speed_kmh.toFixed(1)} km/h at ${result.prediction.wind.direction_deg.toFixed(1)}°.`,
     `${result.grading.reference_laps_evaluated} reference laps · ${(result.grading.timing_ms.end_to_end / 1000).toFixed(2)} s total, including preparation.${result.search ? ` Search phase ${(result.search.elapsed_search_ms / 1000).toFixed(2)} s; limit ${result.search.limits.seconds} s.` : ""}`,
+    ...(result.search ? [`Cache limit: ${result.search.limits.cache_entries.toLocaleString("en-GB")} setups per driver and compound.`] : []),
     ...(result.search?.message || result.grading_message ? [result.search?.message || result.grading_message] : []),
   ]); run.className = "run-details";
   if (diagnostics) logResults(result, validation);

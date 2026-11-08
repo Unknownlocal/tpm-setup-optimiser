@@ -237,7 +237,7 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
       await selectSave(files[0], signal);
     });
   };
-  for (const key of ["ambient", "water", "fuel-load", "driving-pace", "engine-mode", "pace-weight", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", ...setupAxes.map(axis => axis.control)]) {
+  for (const key of ["ambient", "water", "fuel-load", "driving-pace", "engine-mode", "pace-weight", "session-seed", "search-seconds", "search-refine", "search-stall", "search-idle", "search-cache", ...setupAxes.map(axis => axis.control)]) {
     ui[key].oninput = () => {
       if (key === "pace-weight") refreshWeights();
       // Scenario edits invalidate validation results, but folder/calendar work can finish.
@@ -264,13 +264,13 @@ export function createInputPanel(ui, { job, request, invalidate, isReady, isBusy
     ui.status.textContent = isSearch ? "Preparing saved inputs for local setup search..." : "Building reference setups and grading the entered setup locally…";
     const numeric = id => ui[id].value.trim() ? Number(ui[id].value) : NaN;
     const controls = ["ambient", "water", "fuel-load", "driving-pace", "engine-mode", "pace-weight", "session-seed", ...setupAxes.map(axis => axis.control),
-      ...(isSearch ? ["search-seconds", "search-refine", "search-stall", "search-idle"] : [])];
+      ...(isSearch ? ["search-seconds", "search-refine", "search-stall", "search-idle", "search-cache"] : [])];
     for (const id of controls) if (!ui[id].checkValidity()) {
       const section = ui[id].closest("details"); if (section) section.open = true;
       ui[id].focus(); ui[id].reportValidity();
       throw new Error(`Check ${ui[id].labels?.[0]?.textContent.trim() || "the session controls"}.`);
     }
-    const limits = { seconds: numeric("search-seconds"), refine_laps: numeric("search-refine"), stall_laps: numeric("search-stall"), idle_batches: numeric("search-idle") };
+    const limits = { seconds: numeric("search-seconds"), refine_laps: numeric("search-refine"), stall_laps: numeric("search-stall"), idle_batches: numeric("search-idle"), cache_entries: numeric("search-cache") };
     if (isSearch) searchLimits(limits);
     if (!compounds.values().length) throw new Error("Select at least one tyre compound.");
     const files = {};

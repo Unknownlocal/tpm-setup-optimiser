@@ -35,7 +35,7 @@ static class SearchChecks
     public static void Run()
     {
         var source = Source();
-        var request = new JsonObject { ["source"] = source, ["payload"] = JsonNode.Parse("""{"seed":51,"trackId":"authored","search":{"seconds":15,"refine_laps":500,"stall_laps":100,"idle_batches":64}}"""), ["mode"] = "search", ["names"] = new JsonArray("Example Driver") };
+        var request = new JsonObject { ["source"] = source, ["payload"] = JsonNode.Parse("""{"seed":51,"trackId":"authored","search":{"seconds":15,"refine_laps":500,"stall_laps":100,"idle_batches":64,"cache_entries":101}}"""), ["mode"] = "search", ["names"] = new JsonArray("Example Driver") };
         using var job = new SearchJob(request.ToJsonString()); var clock = Stopwatch.StartNew();
         while (!job.PrepareStep()) Check(clock.Elapsed.TotalSeconds < 10, "Search preparation did not finish.");
         while (job.SearchStep()) Check(clock.Elapsed.TotalSeconds < 10, "Bounded authored search did not finish.");
@@ -43,6 +43,7 @@ static class SearchChecks
         using var snapshot = JsonDocument.Parse(SearchSnapshot.All(job));
         Check(snapshot.RootElement[0].GetProperty("rows")[0].GetProperty("score").GetDouble() > 90, "Authored setup search lost its good result.");
         Check(job.CacheEntries > 0, "Search did not retain reusable candidate results.");
+        Check(job.Drivers[0].Cases.Select(state => state.Scorer).OfType<CompoundSearch>().All(scorer => scorer.CacheEntries <= 101), "Search ignored its configured cache bound.");
 
         var scenario = job.Drivers[0].Scenario; var limits = new SearchLimits(); var point = scenario.Space.Ticks(scenario.Initial);
         var soft = scenario.Evaluate(0, point); var mediumLap = scenario.Evaluate(1, point);

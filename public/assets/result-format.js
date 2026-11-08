@@ -39,7 +39,8 @@ export function resultsText(result) {
   const input = result.source;
   const lines = ["TPM Setup Optimiser", `${input.team} | Season ${input.season}, week ${input.week} | ${input.track.name}`,
     `Ambient ${input.weather.temperature_c.toFixed(2)} C | Water ${input.weather.wetness_mm} mm | Seed ${result.prediction.seed}`,
-    drivingSummary(input), gradingSummary(input), equipmentSummary(input), runSummary(result), ""];
+    drivingSummary(input), gradingSummary(input), equipmentSummary(input), runSummary(result),
+    ...(result.search ? [`Cache limit: ${result.search.limits.cache_entries.toLocaleString("en-GB")} setups per driver and compound.`] : []), ""];
   for (const row of result.grading.rows) {
     const average = row.compound === "avg_dry";
     const scores = average ? DRY_COMPOUNDS.map(name => `${compoundName(name, input)} ${row.compound_scores[name].toFixed(2)}`).join(" | ") : row.score.toFixed(2);

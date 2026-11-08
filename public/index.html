@@ -16,7 +16,7 @@
       <p class="eyebrow">Currently available for Formula Racing only - Other game modes currently untested</p>
       <h1>Team Principal: A Racing Manager - Setup Optimiser</h1>
       <p class="intro">Choose your save and its data mod. Find a setup for every driver on your team.</p>
-      <p class="privacy">A tool by Unknownlocal to assist with setup optimisation beyond the default in-game options</p>
+      <p class="privacy">A tool to assist with setup optimisation beyond the default in-game options</p>
     </header>
     <div class="activity" aria-label="Application status">
       <div>
@@ -116,6 +116,11 @@
         </div>
         <p id="memory-help" class="hint">Uses one calculation worker for all driver entries, reducing memory use. It may find fewer improvements within the same time limit. Default: up to two workers. Restoring the second worker may need an internet connection. Reset keeps this choice until the page is reloaded.</p>
         <p id="memory-note" class="hint" role="status" aria-live="polite">Waiting for the calculation engine.</p>
+        <div class="input-grid">
+          <label>Maximum cached setups per driver and compound<input id="search-cache" type="number" min="100" max="100000" step="1" value="4096" required aria-describedby="cache-help cache-limits"></label>
+        </div>
+        <p id="cache-help" class="hint">Stores calculated setup scores in memory so the search can reuse them, separately for each driver and tyre compound. The search can test more setups than this limit. Best results are kept when older cached scores are discarded.</p>
+        <p id="cache-limits" class="hint">Lower limits can reduce memory use but may repeat lap calculations. Higher limits can retain more scores and may reduce repeated work. Default: 4,096; enter a whole number from 100 to 100,000.</p>
       </details>
       <details>
         <summary>Advanced search settings</summary>

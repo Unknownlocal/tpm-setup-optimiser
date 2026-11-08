@@ -234,6 +234,17 @@ textarea {
   margin-top: 7px;
 }
 
+#search-cache {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+#search-cache::-webkit-inner-spin-button,
+#search-cache::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .input-with-action {
   display: flex;
   align-items: center;

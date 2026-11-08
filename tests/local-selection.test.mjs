@@ -3,6 +3,13 @@ import test from "node:test";
 import { compoundName, compoundOptions } from "../public/assets/compounds.js";
 import { createSaveCatalogue, saveSummary } from "../public/assets/save-catalogue.js";
 import { prepareInputs } from "../public/assets/input-preparation.js";
+import { searchLimits } from "../public/assets/search-settings.js";
+
+test("search cache bounds accept whole-number endpoints and reject invalid entries", () => {
+  assert.equal(searchLimits().cache_entries, 4096);
+  for (const value of [100, 101, 100000]) assert.equal(searchLimits({ cache_entries: value }).cache_entries, value);
+  for (const value of [99, 100001, 100.5, NaN]) assert.throws(() => searchLimits({ cache_entries: value }));
+});
 
 const save = (name, pack, lastModified = 0) => new File([JSON.stringify({ data_pack: pack, unrelated: { largeState: "not retained" } })], name, { lastModified });
 const request = (_, file) => saveSummary(file);
