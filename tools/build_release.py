@@ -24,7 +24,7 @@ APP_FILES = (
     *(f"assets/{name}.js" for name in (
         "app", "compounds", "compound-selection", "save-catalogue", "debug-log", "event-resolution", "folder-access", "input-panel",
         "input-preparation", "lap-contract", "lap-physics", "metadata-worker",
-        "mod-resolver", "python-literals", "result-export", "result-format",
+        "mod-resolver", "number-inputs", "python-literals", "result-export", "result-format",
         "result-panel", "search-pool", "search-settings", "search-worker",
         "session-conditions", "setup-model",
     )),

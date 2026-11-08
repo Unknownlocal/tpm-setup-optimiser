@@ -223,7 +223,7 @@ export async function prepareInputs({ saveFile, trackFile, files, weather, setti
     calendarYear: number(save.save_editor_calendar_year ?? (definitions.constants.SEASON_START_YEAR ?? 2025) + save.season_no - 1, "Calendar year", 1),
     week: number(save.week_index, "Saved week index", 0) + 1,
     savedPack: text(save.data_pack, "Saved data pack"), track, drivers,
-    driving: driving ?? { fuel_kg: 15, pace: "push", engine: "medium" },
+    driving: driving ?? { fuel_kg: 15, pace: "neutral", engine: "medium" },
     pace_weight_pct: paceWeightPct,
     weather: { temperature_c: weather.temperature_c == null ? null : number(weather.temperature_c, "Manual ambient temperature"),
       wetness_mm: number(weather.wetness_mm, "Water depth", 0, 5) },

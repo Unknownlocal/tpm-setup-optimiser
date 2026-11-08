@@ -3,6 +3,7 @@ import { parseModQuery } from "./mod-resolver.js";
 import { createInputPanel } from "./input-panel.js";
 import { write_log } from "./debug-log.js";
 import { createSearchPool } from "./search-pool.js";
+import { bindNumberInputs, normaliseNumbers } from "./number-inputs.js";
 
 const ui = Object.fromEntries([...document.querySelectorAll("[id]")].map(element => [element.id, element]));
 const worker = new Worker("/assets/metadata-worker.js", { type: "module" });
@@ -14,6 +15,7 @@ let controller = new AbortController(), nextId = 0;
 const search = createSearchPool();
 const available = () => ready && !changingMemory;
 const inputs = createInputPanel(ui, { job, request, invalidate, search, isReady: available, isBusy: () => busy });
+bindNumberInputs(document);
 
 function controls() {
   ui.status.closest(".activity").dataset.busy = String(busy);
@@ -265,6 +267,7 @@ ui.clear.onclick = () => {
   ui["mod-query"].value = "";
   for (const control of document.querySelectorAll("input:not([type=file]):not([type=checkbox])")) control.value = control.defaultValue;
   for (const id of ["driving-pace", "engine-mode"]) ui[id].value = ui[id].querySelector("option[selected]").value;
+  normaliseNumbers(document);
   for (const section of document.querySelectorAll("details")) section.open = false;
   ui.status.textContent = "Files and results cleared. Ready for a new session.";
   write_log("cleared");

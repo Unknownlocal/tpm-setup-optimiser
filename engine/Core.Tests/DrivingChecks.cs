@@ -26,7 +26,7 @@ static class DrivingChecks
             return solver.Result!.Lap;
         }
         var baseline = Lap(); double reference = Reference();
-        source["driving"] = JsonNode.Parse("""{"fuel_kg":15,"pace":"push","engine":"medium"}""");
+        source["driving"] = JsonNode.Parse("""{"fuel_kg":15,"pace":"neutral","engine":"medium"}""");
         Near(Lap().Lap, baseline.Lap); Near(Reference(), reference);
         var driving = source["driving"]!;
         driving["fuel_kg"] = 75;
@@ -34,7 +34,7 @@ static class DrivingChecks
         if (heavy.Lap <= baseline.Lap || Reference() <= reference) throw new Exception("Fuel load did not reach both candidate and reference laps.");
         driving["fuel_kg"] = 15; driving["pace"] = "conserve"; driving["engine"] = "low";
         var conservative = Lap();
-        Near(conservative.Inputs!.DriverCorner, baseline.Inputs!.DriverCorner - .8);
+        Near(conservative.Inputs!.DriverCorner, baseline.Inputs!.DriverCorner - .4);
         Near(conservative.Inputs.EnginePower, baseline.Inputs.EnginePower - 2);
         Near(conservative.Temperature, baseline.Temperature);
         if (conservative.Lap <= baseline.Lap || Reference() <= reference) throw new Exception("Driving modes did not reach both candidate and reference laps.");
@@ -44,7 +44,7 @@ static class DrivingChecks
         source["drivers"]![0]!["parts"]![2]!["item"]!["condition"] = 100;
         driving["fuel_kg"] = 0; driving["pace"] = "neutral"; driving["engine"] = "high";
         var high = Lap(); Near(high.Inputs!.FuelMass, 0); Near(high.Inputs.EnginePower, 100);
-        Near(high.Inputs.DriverCorner, baseline.Inputs.DriverCorner - .4);
+        Near(high.Inputs.DriverCorner, baseline.Inputs.DriverCorner);
         foreach (string invalid in new[] { """{"fuel_kg":-1,"pace":"push","engine":"medium"}""", """{"fuel_kg":15,"pace":"unknown","engine":"medium"}""", """{"fuel_kg":15,"pace":"push","engine":"unknown"}""" })
         {
             source["driving"] = JsonNode.Parse(invalid);

@@ -26,6 +26,12 @@ python -m flask --app "main:create_app('.vercel/output/static')" run --port 5080
 Open http://127.0.0.1:5080. Drop the game folder, select the save's data
 mod and a save, then check the circuit and conditions. **Find setups** searches;
 **Grade entered setup** scores the entered settings. Copy/download stays local.
+
+The circuit list contains only tracks on that save's current season calendar,
+including testing venues resolved from the mod's testing rotation. Numbers are
+clamped to their allowed ranges and steps on leaving a field and before running;
+blank required fields restore defaults. Entered setups start at the mod's neutral
+game values; fields stay disabled until those definitions are available.
 The mod must be inside that game folder; use its name or relative path.
 The save list is filtered by the selected mod folder's identifier in `data_pack`.
 When the scan finishes, the most recently modified matching save is selected
@@ -35,8 +41,8 @@ again finishes the scan using cached metadata. A manually chosen save must match
 the mod too. Tyre checkboxes come from that mod's definitions, with all selected
 initially. AVG_DRY is included when soft, medium and hard are selected.
 Advanced session settings let you change fuel load, driving pace and engine mode
-for every driver. Defaults remain 15 kg, push and medium. Both setup searches and
-their reference laps use the selected conditions. Fuel stays constant during each
+for every driver. Defaults are 15 kg, medium pace and medium engine. Both searches
+and their reference laps use the selected conditions. Fuel stays constant during each
 projected lap; fuel burn, wear and failures are not simulated.
 Advanced grading settings let you set the pace percentage; driver preference
 uses the remaining share. The default is 85% pace and 15% preference. This affects

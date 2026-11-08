@@ -2,7 +2,8 @@ import { rankMods } from "./mod-resolver.js";
 import { readJson, trackOptions } from "./input-preparation.js";
 import { compoundOptions } from "./compounds.js";
 import { saveSummary } from "./save-catalogue.js";
-import { resolveDefaultCircuit } from "./event-resolution.js";
+import { resolveSeasonCalendar } from "./event-resolution.js";
+import { setupModel, resolveSetupAxes } from "./setup-model.js";
 
 self.onmessage = async ({ data: { id, type, payload } }) => {
   try {
@@ -11,8 +12,10 @@ self.onmessage = async ({ data: { id, type, payload } }) => {
       result = await saveSummary(payload);
     } else if (type === "compound-options") {
       result = compoundOptions(await readJson(payload, "tyremodel.json"));
-    } else if (type === "default-circuit") {
-      result = await resolveDefaultCircuit(payload);
+    } else if (type === "setup-options") {
+      result = resolveSetupAxes(setupModel("formula"), (await readJson(payload, "config.json"))?.car_setup);
+    } else if (type === "season-calendar") {
+      result = await resolveSeasonCalendar(payload);
     } else if (type === "track-options") {
       result = await trackOptions(payload);
     } else if (type === "rank") {

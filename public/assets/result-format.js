@@ -11,7 +11,7 @@ export function gradingSummary(input) {
 
 export function drivingSummary(input) {
   const { fuel_kg, pace, engine } = input.driving;
-  return `Fuel ${fuel_kg} kg · Pace ${pace} · Engine ${engine}`;
+  return `Fuel ${fuel_kg} kg · Pace ${pace === "neutral" ? "medium" : pace} · Engine ${engine}`;
 }
 
 export function equipmentSummary(input) {

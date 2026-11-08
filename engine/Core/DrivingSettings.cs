@@ -10,8 +10,8 @@ public sealed record DrivingSettings(double FuelKg, double CorneringBonus, doubl
     public static DrivingSettings Read(JsonElement source)
     {
         var raw = At(source, "driving");
-        // Older prepared inputs use the original hotlap defaults.
-        if (raw.ValueKind == JsonValueKind.Undefined) return new(15, .4, 0);
+        // Missing controls use medium (neutral) pace and medium engine, as on the form.
+        if (raw.ValueKind == JsonValueKind.Undefined) return new(15, 0, 0);
         if (raw.ValueKind != JsonValueKind.Object) throw new ArgumentException("Invalid driving settings.");
         double fuel = Required(At(raw, "fuel_kg"), "fuel load");
         if (fuel < 0) throw new ArgumentException("Fuel load must be zero or greater.");

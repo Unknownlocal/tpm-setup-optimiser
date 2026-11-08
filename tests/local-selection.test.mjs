@@ -4,6 +4,43 @@ import { compoundName, compoundOptions } from "../public/assets/compounds.js";
 import { createSaveCatalogue, saveSummary } from "../public/assets/save-catalogue.js";
 import { prepareInputs } from "../public/assets/input-preparation.js";
 import { searchLimits } from "../public/assets/search-settings.js";
+import { resolveSeasonCalendar } from "../public/assets/event-resolution.js";
+import { resolveSetupAxes, setupModel } from "../public/assets/setup-model.js";
+import { boundedNumber } from "../public/assets/number-inputs.js";
+
+test("season circuits resolve same-week and repeated tests without admitting unrelated venues", async () => {
+  const file = data => new File([JSON.stringify(data)], "calendar.json");
+  const saved = { week_index: 1, season_no: 4, player_team: "Example Team", schedule: ["test", "test", "test", "SPA", "spa", null] };
+  const payload = { saveFile: file(saved), testFile: file({ tracks: ["CAT", "sak", "imo", "off_calendar"] }) };
+  const calendar = await resolveSeasonCalendar(payload);
+  assert.equal(calendar.next.event_week, 2); assert.equal(calendar.next.track_id, "sak");
+  assert.deepEqual(calendar.events.map(event => event.track_id), ["cat", "sak", "imo", "SPA", "spa"]);
+  const rotated = await resolveSeasonCalendar({ ...payload, testFile: file({ tracks: ["CAT", "sak"] }) });
+  assert.equal(rotated.events[2].track_id, "cat"); assert.equal(rotated.events[2].test_ordinal, 3);
+  const missing = await resolveSeasonCalendar({ saveFile: file(saved) });
+  assert.deepEqual(missing.events.map(event => event.track_id), ["SPA", "spa"]); assert.equal(missing.next, null); assert.equal(missing.issues.length, 1);
+  const finished = await resolveSeasonCalendar({ ...payload, saveFile: file({ ...saved, week_index: 8 }) });
+  assert.equal(finished.next, null); assert.equal(finished.events.length, 5);
+  await assert.rejects(resolveSeasonCalendar({ saveFile: file({}) }), /valid season calendar/);
+});
+
+test("entered setup defaults follow the mod's neutral settings and step-aligned ranges", () => {
+  const config = { wing_levels: { min_level: 1, max_level: 20, neutral_level: 10 },
+    tyre_pressures: { front: { min_psi: 20, max_psi: 28, neutral_psi: 24, step_psi: .1 }, rear: { min_psi: 20, max_psi: 25, neutral_psi: 22.5, step_psi: .1 } },
+    suspension_setup: { min_level: 1, max_level: 11, neutral_level: 6 } };
+  assert.deepEqual(resolveSetupAxes(setupModel("formula"), config).map(axis => axis.initial), [10, 10, 24, 22.5, 6]);
+  config.tyre_pressures.front = { min_psi: 21, max_psi: 28, step_psi: .2 };
+  const front = resolveSetupAxes(setupModel("formula"), config)[2];
+  assert.equal(front.initial, 24.6); assert.equal(front.min, 21); assert.equal(front.step, .2);
+});
+
+test("numeric entries clamp to valid bounds and steps, including non-aligned endpoints", () => {
+  assert.equal(boundedNumber(-1, 0, 5), 0); assert.equal(boundedNumber(6, 0, 5), 5);
+  assert.equal(boundedNumber(100.5, 100, 100000, 1), 101);
+  assert.equal(boundedNumber(24.15, 20, 28, .1), 24.2);
+  assert.equal(boundedNumber(10, 1, 1.25, .1), 1.2);
+  assert.equal(boundedNumber(175.5, 0), 175.5);
+});
 
 test("search cache bounds accept whole-number endpoints and reject invalid entries", () => {
   assert.equal(searchLimits().cache_entries, 4096);
