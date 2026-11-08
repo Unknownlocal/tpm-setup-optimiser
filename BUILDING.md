@@ -54,12 +54,15 @@ unit for spec rules, or no assistance when banned. The selected mod must include
 Each projected lap starts charged. Battery depletion across laps and failures
 are not simulated.
 
-Vercel Git deployments run `python3 tools/build_vercel.py`. This installs the
-.NET SDK version from `engine/global.json` and its WebAssembly build tools in
-the build container, then runs the same static bundle build as above. The
+Vercel Git deployments run `python3 tools/build_vercel.py`. This runs the
+JavaScript selection tests, installs the .NET SDK version from
+`engine/global.json`, then runs the .NET calculation tests. Only if both pass
+does it install the WebAssembly build tools and build the static bundle. The
 `framework: null` setting overrides Flask detection. No Python function is
 deployed. A failed engine build fails the deployment rather than publishing a
-page without its engine. SDK files stay outside the deployed output.
+page without its engine. A failed test also stops deployment. Each build uses
+a fresh temporary SDK to avoid incomplete tool caches, and removes it afterwards.
+Tests and SDK files stay outside the deployed output.
 
 The GitHub build workflow checks local selection behaviour and calculations,
 then builds this bundle on pull requests or manual runs, using .NET SDK 10.0.403.
