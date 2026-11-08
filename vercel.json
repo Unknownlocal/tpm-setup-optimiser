@@ -1,9 +1,7 @@
 {
-  "functions": {
-    "main.py": {
-      "excludeFiles": "{engine/Core.Tests/**,tests/**}"
-    }
-  },
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "python3 tools/build_vercel.py",
   "headers": [{
     "source": "/(.*)",
     "headers": [

@@ -68,7 +68,7 @@ def digest(path):
 def source_hashes():
     files = [PUBLIC / name for name in APP_FILES]
     files += [ROOT / "notices/dotnet" / name for name in NOTICES]
-    files += [ROOT / name for name in ("vercel.json", "engine/global.json", "tools/build_engine.py", "tools/build_release.py")]
+    files += [ROOT / name for name in ("vercel.json", "engine/global.json", "tools/build_engine.py", "tools/build_release.py", "tools/build_vercel.py")]
     for folder in ("Core", "Browser"):
         files += [path for path in (ROOT / "engine" / folder).rglob("*")
                   if path.suffix in (".cs", ".csproj") and not {"bin", "obj"}.intersection(path.parts)]

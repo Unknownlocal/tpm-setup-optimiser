@@ -54,6 +54,13 @@ unit for spec rules, or no assistance when banned. The selected mod must include
 Each projected lap starts charged. Battery depletion across laps and failures
 are not simulated.
 
+Vercel Git deployments run `python3 tools/build_vercel.py`. This installs the
+.NET SDK version from `engine/global.json` and its WebAssembly build tools in
+the build container, then runs the same static bundle build as above. The
+`framework: null` setting overrides Flask detection. No Python function is
+deployed. A failed engine build fails the deployment rather than publishing a
+page without its engine. SDK files stay outside the deployed output.
+
 The GitHub build workflow checks local selection behaviour and calculations,
 then builds this bundle on pull requests or manual runs, using .NET SDK 10.0.403.
 It does not deploy. Extract its
@@ -61,7 +68,7 @@ It does not deploy. Extract its
 The small selection checks can also run locally with Node 24:
 `node --test tests/local-selection.test.mjs`. Tests are excluded from the bundle.
 
-When a deployment is wanted, link the intended Vercel project and use
+To deploy an already built bundle instead, link the intended Vercel project and use
 `vercel deploy --prebuilt` from this folder. Review the project/environment first;
 `--prod` selects production. The [Vercel Build Output API](https://vercel.com/docs/build-output-api)
 serves the prepared bundle without a Python function. Flask remains a local
